@@ -51,3 +51,7 @@ PRs must name phase, acceptance test IDs, test environment, actual tests and res
 ### Decision priority
 
 Safety and scope exclusions > explicit owner task > approved ADRs > implementation contracts/specs > candidate architecture. Report conflicts openly instead of guessing.
+
+## Approved dashboard appearance and functionality
+
+Read **docs/DASHBOARD-DESIGN.md** and **design/dashboard-layout.svg** before proposing any WinCC UI. The owner approved the second visual mockup: left clock/date → calendar → Spotify; right system monitoring → weather → editable notes; top-center expandable AI Dynamic Island; central wallpaper unobstructed. Keep the native Windows taskbar. The layout diagram is a schematic, **not** a pixel-perfect copy of the generated raster mockup. Do not hardcode sample song names, dates, temperatures, or hardware metrics. Design approval does not authorize application implementation or alter gate sequencing.
