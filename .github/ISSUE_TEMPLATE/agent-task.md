@@ -1,6 +1,6 @@
 ---
 name: Agent task
-about: A narrowly scoped, reviewable task for AI agents or contributors
+about: Scoped work for the WinCC Windows 11 home screen
 title: "[Agent] "
 labels: []
 assignees: []
@@ -8,11 +8,11 @@ assignees: []
 
 ## Goal
 
-Describe the specific outcome. An item in the roadmap does not by itself authorize implementation.
+State a specific home-screen or command-center outcome. Roadmap entries alone do not authorize implementation.
 
-## Explicit authorization / phase
+## Authorization / phase
 
-Current phase is **Phase 0: agent preparation**. If this task authorizes application implementation, specify which component and boundaries.
+WinCC is currently Phase 0: agent setup. Explicitly identify the authorized scope if this task permits writing product code.
 
 ## In scope
 
@@ -26,14 +26,10 @@ Current phase is **Phase 0: agent preparation**. If this task authorizes applica
 
 -
 
-## Verification required
+## Verification
 
-Include Windows 11 OS/build and manual checks for Windows-dependent tasks.
+Include Windows 11 OS/build information for native desktop checks.
 
-## Risk and rollback
+## Risks and rollback
 
-State any desktop-shell, login, or credential implications and how to recover.
-
-## References
-
-Relevant docs / ADRs / prior issues.
+Explain how Explorer, Wallpaper Engine and ordinary app windows remain usable if the change fails.

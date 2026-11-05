@@ -1,6 +1,6 @@
 ---
-description: WinCC project-wide agent rules
+description: WinCC Windows 11 home screen project rules
 alwaysApply: true
 ---
 
-Follow AGENTS.md at the repository root as the source of truth. The current phase is agent preparation only, not application implementation. Read docs/PRODUCT.md, docs/ARCHITECTURE.md, docs/ROADMAP.md, and docs/SECURITY.md before making a plan. Respect the native Windows authentication boundary.
+Follow AGENTS.md at the repository root as the canonical instructions. WinCC only builds the Windows home screen and command center; do not add other system-login projects here. The current phase is planning and agent preparation only. Read docs/PRODUCT.md, docs/ARCHITECTURE.md, docs/ROADMAP.md and docs/SECURITY.md before making a plan.

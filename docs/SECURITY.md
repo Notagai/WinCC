@@ -1,27 +1,30 @@
-# Security boundaries and recovery policy
+# WinCC operational safety
 
-## Trust model
+This document concerns **desktop reliability and local data** for a Windows 11 home-screen application, not operating-system authentication.
 
-WinCC's custom privacy-lock screen (Stage 1) is **not** the secure Windows lock screen. Its presence does not establish that files, applications, or the signed-in session are protected. The native Windows lock (Stage 2) is the security boundary.
+## Desktop stability
 
-## Required design principles
+- WinCC should run under normal user permissions.
+- Do not replace Explorer or modify the system shell by default.
+- Always offer a usable exit/recovery path when introducing an overlay, window hosting or startup registration.
+- Do not interfere with ordinary application interaction, taskbar controls or system keyboard shortcuts.
+- Prefer a documented fallback window mode when undocumented desktop placement fails.
+- Test Explorer restart, display hotplug, sleep/resume and fullscreen transitions on Windows 11 before declaring stability.
 
-- Windows controls real lock/unlock and credentials.
-- Never disable built-in Windows credential providers or native recovery/sign-in paths.
-- Do not suppress Windows lock mechanisms to give a false impression of security.
-- Do not store any real credentials, biometric templates, Windows passwords, or recovery codes in repo, telemetry, screenshots, sample fixtures, or frontend.
-- Run ordinary UI at normal user integrity, not administrator.
-- Require explicit authorization and an isolated VM before native credential-provider, input-driver, injection, or invasive shell experiments.
-- Keep credential verification out of WebView/React code.
-- Fail closed where possible: if Stage 1 fails, request native locking; do not claim Stage 2 occurred until Windows confirms session state.
-- Provide a documented escape/recovery path and test it before startup persistence, shell replacement, or other intrusive integration.
+## Dependencies and permissions
 
-## Logging and local data
+- Wallpaper Engine is independent and optional.
+- Avoid privileged services, kernel extensions, injection and hidden persistence.
+- Any optional shell styling integration must be approved, isolated and removable.
+- Do not introduce network communications, auto-updaters or telemetry without an approved requirement.
 
-Keep log output free of secrets and credential material; use minimum diagnostic data. No analytics/network calls are part of the baseline. Store configuration locally only when a real application is authorized.
+## User data
 
-## Threat assumptions
+- Widget layout and settings should default to local storage.
+- Never commit secrets, local user files or machine-specific identifiers.
+- Minimize and redact diagnostic logs; do not upload them automatically.
+- Provide safe config reset and migration processes when persistence is implemented.
 
-Stage 1 is a *casual deterrent*. A person with access to the unlocked Windows session may be able to bypass ordinary application overlays. Never market it as protection against privileged users, malicious processes, or physical access attacks.
+## Development rules
 
-Security-sensitive feature proposals need a threat model, rollback procedure, and explicit approval before implementation.
+No functionality is implemented during Phase 0. New behavior needs explicit scope, tests and a rollback path. Record assumptions and compatibility problems rather than claiming untested features work.

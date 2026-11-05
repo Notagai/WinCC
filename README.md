@@ -1,43 +1,41 @@
 # WinCC
 
-**WinCC (Windows Command Center)** is a planned, customizable Windows 11 desktop experience.
+**WinCC (Windows Command Center)** is a planned customizable **Windows 11 home screen and desktop command center**.
 
-> **Status: Phase 0, agent-ready planning only.** No WinCC app, lock screen, interception module, installer, or runtime has been implemented.
+> **Status: Phase 0, AI-agent repository preparation only.** No executable product is implemented.
 
 ## Vision
 
-- A custom home screen that coexists with **Wallpaper Engine**, without depending on Wallpaper Engine internals.
-- A native Windows-hosted desktop surface with an independently themed widget and launcher UI.
-- Future two-stage locking: a **custom first-stage privacy screen** followed by the **actual Windows lock**.
-- Potential deeper Windows customization through optional extensions, evaluated and isolated separately.
+- Customizable home screen layered over or alongside **Wallpaper Engine**, without integrating with its internals.
+- Native Windows-hosted desktop surface with a flexible widget system, app launcher, and command-center UI.
+- Independent themes, local layout persistence, and reliable Windows desktop behavior.
 
-The first product milestone, once implementation is authorized, will be a transparent home-screen surface with a draggable clock widget and persistent position. The lock screen comes later.
+**Scope boundary:** WinCC is only for the home screen/command center. A custom lock-screen project belongs in a different repository, if pursued later.
 
-## Working with AI agents
+## AI agent entry point
 
-Start with [AGENTS.md](AGENTS.md). It defines the project boundaries and expected workflow for Codex, Copilot, Claude, Cursor, and other contributors.
+Read [AGENTS.md](AGENTS.md) first. This is the canonical workflow and scope guide for coding agents, including Codex, Claude Code, GitHub Copilot, and Cursor.
 
 | Document | Purpose |
 | --- | --- |
-| [Product brief](docs/PRODUCT.md) | Scope, vision, and non-goals |
-| [Architecture](docs/ARCHITECTURE.md) | Proposed components and integration boundaries |
-| [Roadmap](docs/ROADMAP.md) | Phases and acceptance gates |
-| [Security](docs/SECURITY.md) | Trust model and safety rules |
-| [Decision log](docs/decisions/0001-planning-baseline.md) | Initial assumptions and open decisions |
+| [Product brief](docs/PRODUCT.md) | Goals, requirements, and exclusions |
+| [Architecture](docs/ARCHITECTURE.md) | Proposed home-screen components |
+| [Roadmap](docs/ROADMAP.md) | Phased implementation and acceptance gates |
+| [Safety](docs/SECURITY.md) | Desktop stability and local-data safeguards |
+| [Decisions](docs/decisions/0001-planning-baseline.md) | Initial architecture assumptions |
 
-These documents describe **intent**, not an implemented feature set or a final design. Agents must not begin product implementation without an explicit task authorizing it.
+All stack choices are provisional until tested and approved. Agents must not implement product features without an explicitly scoped task.
 
-## Contribution workflow
+## First engineering milestone (future)
 
-Use a short-lived branch for each bounded task, consult the relevant documents, and submit a PR using the included template. Report verified behavior separately from assumptions or untested Windows-specific behavior. Never commit credentials, biometric material, or local machine-specific settings.
+A transparent Windows 11 desktop surface with a movable clock widget whose position persists, while Wallpaper Engine remains independent and ordinary application windows behave normally.
 
-## Project status
+## Repository status
 
-- [x] Repository guidance for AI agents
-- [x] Initial product, architecture, security, and roadmap notes
-- [ ] Approved technical spike for desktop layering
+- [x] Agent instructions, planning documents, and task templates
+- [ ] Approved desktop-layer technical spike
 - [ ] Native desktop host
-- [ ] Widget runtime
-- [ ] Lock-screen work
+- [ ] Home-screen widgets and launcher
+- [ ] Customization and resilience testing
 
-No build or test commands are defined yet because no executable project exists.
+No build or test commands exist yet because this is a planning-only repository.

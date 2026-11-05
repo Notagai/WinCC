@@ -1,39 +1,40 @@
-# Roadmap and task boundaries
+# WinCC roadmap
 
-## Phase 0: agent-readiness (**current**, implementation prohibited)
+## Phase 0: agent-ready planning (**current**)
 
-- [x] Central AGENTS.md instructions and agent-specific entry points.
-- [x] README with current status and document index.
-- [x] Product, architecture, security, and decision notes.
-- [x] PR and issue templates.
-- [ ] Owner approves initial Windows desktop technical spike and final stack decisions.
+- [x] Canonical instructions and agent entry points
+- [x] Product/architecture/safety documentation and decision record
+- [x] Issue/PR templates
+- [ ] Owner-authorized technical spike and confirmed technology choices
 
-**Gate:** Do not move to Phase 1 solely because this roadmap exists. An explicit scoped task is required.
+**Gate:** This document does not authorize implementation. Wait for a specific, explicitly scoped engineering task.
 
-## Phase 1: desktop placement spike (future)
+## Phase 1: Windows 11 desktop layering spike (future)
 
-Test transparent native desktop-host placement on Windows 11, wallpaper co-existence, click behavior, z-order, Explorer restarts, virtual desktops, and multi-monitor handling. Record OS build and results. No locks or credential features.
+Compare native host window placement options, wallpaper visibility, input routing, window z-order, Explorer restart, virtual desktops and multi-monitor behavior.
 
-**Exit criteria:** reproducible test results, fallback path, known limits, safe close/exit.
+**Exit criteria:** reproducible Windows 11 tests with OS build, failed-case notes and safe exit/fallback.
 
-## Phase 2: minimal home MVP (future)
+## Phase 2: minimum home-screen MVP (future)
 
-One draggable clock widget with persisted layout, launcher placeholder only if requested, theme boundaries, manual startup behavior. Avoid auto-start until explicitly requested.
+Transparent native desktop host, one draggable clock widget, persistent widget position. Wallpaper Engine remains a separate process. No additional product modules unless requested.
 
-**Exit criteria:** normal windows remain usable, wallpaper visible, layout persists, minimal performance overhead.
+**Exit criteria:** ordinary windows work, wallpaper remains visible, layout survives restart and exit restores normal desktop behavior.
 
-## Phase 3: home functionality (future)
+## Phase 3: customizable home (future)
 
-Widget SDK, launcher, themes, optional auto-start, system events, accessibility and performance improvements.
+Widget architecture, launcher, search/shortcuts, saved layouts, themes, animations, accessibility.
 
-## Phase 4: Stage 1 privacy-lock research (future)
+## Phase 4: Windows integration and reliability (future)
 
-State coordinator, independent application credentials, and safe/native-lock fallback. Explicitly state that Stage 1 is a deterrent, not Windows session security.
+Optional startup registration, display/DPI/virtual desktop handling, Explorer recovery, fullscreen performance and settings.
 
-## Phase 5: optional deeper Windows integration (future)
+## Phase 5: packaging and testing (future)
 
-Assess interception frameworks in a VM; research supported credential-provider integration separately. Preserve native authentication and a tested recovery method. No unsupported security bypasses.
+Diagnostics, clean uninstall, compatibility tests, versioned config migration and performance benchmarks.
 
-## Suggested first task for a future agent
+## First recommended engineering task
 
-'Investigate and document Windows 11 native desktop layering options for WinCC without implementing the lock screen.' Require a scoped issue, a test plan, and owner approval before making an executable prototype.
+'Investigate Windows 11 desktop layering for WinCC and build the smallest approved proof-of-concept host.' The owner must authorize implementation first and define verification criteria.
+
+**Out of scope at every phase:** custom lock screen, Windows authentication, login UI and credential systems. Those belong to a separate repository.

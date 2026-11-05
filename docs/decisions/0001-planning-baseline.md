@@ -1,29 +1,28 @@
-# ADR 0001: Initial planning baseline
+# ADR 0001: WinCC planning baseline
 
-- **Status:** provisional planning baseline
+- **Status:** provisional; scope clarified
 - **Date:** 2026-11-04
 
 ## Context
 
-WinCC is a new Windows Command Center repository. The owner requested agent readiness first, not product implementation.
+WinCC is a new repository for a Windows Command Center. The owner requested readiness for AI agents before product implementation, and clarified that the project is **home-screen only**.
 
 ## Decisions
 
-1. Windows 11 is the initial target platform.
-2. The home screen is first; the custom lock screen comes later.
-3. Wallpaper Engine runs independently; WinCC is an overlay or complementary desktop host, not a Wallpaper Engine extension.
-4. Native Windows remains authoritative for actual session locking and unlocking.
-5. Two-stage locking is the desired later experience. Reserved Win+L interception is experimental and is not a guaranteed engineering requirement until validated.
-6. WPF/.NET with WebView2/React is a **candidate architecture**, not a final stack lock.
-7. Agents may update docs and task scaffolding in Phase 0, but no application, driver, lock, or installer code without explicit owner authorization.
+1. Windows 11 is the initial platform.
+2. WinCC covers the custom desktop home screen and command center only.
+3. Wallpaper Engine remains independent; no internal integration is assumed.
+4. WPF/.NET and WebView2/React are candidate technologies pending testing.
+5. Agent instructions and documentation can be prepared now; implementation requires explicit authorization.
+6. A future lock-screen experience is a separate repository, not a WinCC module or milestone.
+7. Desktop-host stability, multi-monitor behavior and normal Explorer usability are first-class requirements.
 
 ## Open decisions
 
-- Final native UI host (WPF versus WinUI 3).
-- Desktop placement technique and fallback.
-- Chosen frontend and widget model.
-- Visual direction and layout conventions.
-- Supported multi-monitor and virtual desktop behaviors.
-- Whether to prototype any hotkey interception in a VM after the home-screen milestone.
+- Native desktop host: WPF vs WinUI 3.
+- Window hosting strategy and fallback.
+- Frontend and widget APIs.
+- Visual style, widgets and layout conventions.
+- Multi-monitor, virtual desktop and wallpaper coexistence verification.
 
-Update with a new ADR when one of these decisions is made rather than quietly rewriting the history.
+New accepted architecture decisions should be recorded as separate ADRs.

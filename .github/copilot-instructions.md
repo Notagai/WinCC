@@ -1,5 +1,5 @@
 # GitHub Copilot instructions
 
-Follow [AGENTS.md](../AGENTS.md) as the canonical agent guidance.
+Follow [AGENTS.md](../AGENTS.md) as the single source of repository-wide agent guidance.
 
-Current scope is **planning and repository preparation only**. Do not scaffold or implement the desktop app, UI, interception, authentication, or installer without explicit task authorization. Read the product, architecture, security, and roadmap documents before proposing code.
+WinCC only covers a Windows 11 home screen and command center. Current work is planning and repository preparation, not application implementation. Read the product, architecture, roadmap and safety notes before modifying code.

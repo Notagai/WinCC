@@ -1,31 +1,30 @@
-## Purpose
+## Goal
 
-What explicit task or issue does this PR address?
+What specifically authorized WinCC home-screen task does this PR accomplish?
 
 ## Scope
 
 - Changed:
-- Intentionally not changed:
+- Deliberately not changed:
 
-## Decision and compatibility notes
+## Design considerations
 
-What assumptions, architecture choices, or Windows 11 build constraints matter?
+Does the change affect desktop placement, Wallpaper Engine independence, window interaction, persistent layout or compatibility?
 
 ## Verification
 
-- [ ] Relevant tests actually run (list commands/results below)
-- [ ] Manual Windows 11 behavior checked if applicable, with OS build
-- [ ] Any untested behavior is explicitly identified
-- [ ] No application feature implementation unless explicitly authorized
-- [ ] No credentials or sensitive local settings committed
-- [ ] Security boundaries and fallback remain intact
+- [ ] Actual tests and commands/results documented below
+- [ ] Manual Windows 11 checks documented if applicable
+- [ ] No features implemented outside the authorized task
+- [ ] No credentials, secrets, or personal device settings committed
+- [ ] Desktop can be exited or recovered safely
 
 **Tests performed:**
 
-**Known limitations and risks:**
+**Untested assumptions:**
 
-**Rollback/recovery:**
+**Risks and rollback:**
 
-## Screenshots
+## Screenshots (if relevant)
 
-Only when UI changes are authorized and implemented.
+Only for approved UI work.
