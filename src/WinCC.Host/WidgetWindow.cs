@@ -20,7 +20,7 @@ internal sealed class WidgetWindow : Window, IDisposable
 {
     private readonly Dashboard dashboard;
     private Widget widget;
-    private readonly Border card;
+    private readonly LiquidGlass card;
     private readonly Grid grid = new();
     private readonly DispatcherTimer tick = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly DispatcherTimer noteSave = new() { Interval = TimeSpan.FromMilliseconds(600) };
@@ -46,6 +46,7 @@ internal sealed class WidgetWindow : Window, IDisposable
     public WidgetWindow(Dashboard dashboard, Widget widget)
     {
         this.dashboard = dashboard; this.widget = widget;
+        FontSize = dashboard.Settings.WidgetFontSize;
         Title = "WinCC · " + WidgetCatalog.Get(widget.Type).Name;
         Width = widget.RectDip.Width; Height = widget.RectDip.Height;
         ShowActivated = false; ShowInTaskbar = dashboard.Windowed;
@@ -54,13 +55,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         AllowsTransparency = !dashboard.Windowed;
         Background = Brushes.Transparent;
         Topmost = false;
-        var color = dashboard.Settings.Theme == "Midnight" ? Color.FromArgb(245, 20, 28, 44) : Color.FromArgb(220, 40, 53, 76);
-        card = new Border
-        {
-            Background = new SolidColorBrush(color), CornerRadius = new CornerRadius(18),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(120, 194, 209, 245)), BorderThickness = new Thickness(1),
-            Padding = new Thickness(16), Child = grid
-        };
+        card = new LiquidGlass { Child = new Border { Padding = new Thickness(20), Child = grid } };
         Content = card;
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -123,8 +118,8 @@ internal sealed class WidgetWindow : Window, IDisposable
         grid.Children.Add(header); WireGesture(header, resize: false);
         var resize = new Thumb
         {
-            Width = 32, Height = 28, Cursor = Cursors.SizeNWSE, Focusable = true,
-            HorizontalAlignment = HorizontalAlignment.Right, Template = ThumbTemplate("◢")
+            Height = 32, Cursor = Cursors.SizeNWSE, Focusable = true, Tag = "resize",
+            HorizontalAlignment = HorizontalAlignment.Stretch, Template = ThumbTemplate("Resize  ↘")
         };
         System.Windows.Automation.AutomationProperties.SetName(resize, "Resize " + widget.Type);
         Grid.SetRow(resize, 2); grid.Children.Add(resize); WireGesture(resize, resize: true);
@@ -179,7 +174,12 @@ internal sealed class WidgetWindow : Window, IDisposable
         if (!dashboard.Editor.IsEditing || Keyboard.FocusedElement is not Thumb) return;
         double step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 10 : 1;
         var r = widget.RectDip;
-        var next = e.Key switch
+        bool resizing = Keyboard.FocusedElement is Thumb { Tag: "resize" };
+        var next = resizing ? e.Key switch
+        {
+            Key.Left => r with { Width = r.Width - step }, Key.Right => r with { Width = r.Width + step },
+            Key.Up => r with { Height = r.Height - step }, Key.Down => r with { Height = r.Height + step }, _ => r
+        } : e.Key switch
         {
             Key.Left => r with { X = r.X - step }, Key.Right => r with { X = r.X + step },
             Key.Up => r with { Y = r.Y - step }, Key.Down => r with { Y = r.Y + step }, _ => r
@@ -199,7 +199,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             case "clock":
                 var clock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-                live.FontSize = 36; clock.Children.Add(live); body.Children.Add(clock); break;
+                live.FontSize = 30; clock.Children.Add(live); body.Children.Add(Scrollable(clock)); break;
             case "calendar":
                 BuildCalendar(body); break;
             case "notes":
@@ -226,6 +226,7 @@ internal sealed class WidgetWindow : Window, IDisposable
                 }
                 body.Children.Add(Scrollable(island)); break;
         }
+        Typography.Apply(body, dashboard.Settings.WidgetFontSize / 14);
     }
     private void RebuildBody()
     {
@@ -240,6 +241,11 @@ internal sealed class WidgetWindow : Window, IDisposable
             HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Top,
             Language = System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag)
         };
+        calendar.Foreground = Brushes.Black;
+        calendar.Background = Brushes.WhiteSmoke;
+        var calendarText = new Style(typeof(TextBlock));
+        calendarText.Setters.Add(new Setter(TextBlock.ForegroundProperty, Brushes.Black));
+        calendar.Resources.Add(typeof(TextBlock), calendarText);
         calendar.DisplayDateChanged += (_, _) => calendarMonth = calendar.DisplayDate;
         var panel = new StackPanel(); panel.Children.Add(Label("CALENDAR · LOCAL", 13)); panel.Children.Add(calendar);
         panel.Children.Add(Label("No cloud calendar connected.", 12)); body.Children.Add(Scrollable(panel));
@@ -249,8 +255,8 @@ internal sealed class WidgetWindow : Window, IDisposable
         var panel = new DockPanel();
         noteStatus = Label("Saved locally", 12); DockPanel.SetDock(noteStatus, Dock.Bottom); panel.Children.Add(noteStatus);
         var tools = new WrapPanel(); DockPanel.SetDock(tools, Dock.Bottom); panel.Children.Add(tools);
-        var retry = new Button { Content = "Save now" }; retry.Click += (_, _) => FlushNote(); tools.Children.Add(retry);
-        var export = new Button { Content = "Export" }; tools.Children.Add(export);
+        var retry = new Button { Content = "Save now", Padding = new Thickness(8, 4, 8, 4), FontSize = 12 }; retry.Click += (_, _) => FlushNote(); tools.Children.Add(retry);
+        var export = new Button { Content = "Export", Padding = new Thickness(8, 4, 8, 4), FontSize = 12 }; tools.Children.Add(export);
         note = new TextBox
         {
             AcceptsReturn = true, AcceptsTab = true, TextWrapping = TextWrapping.Wrap,

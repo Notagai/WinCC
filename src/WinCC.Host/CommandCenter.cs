@@ -15,6 +15,7 @@ namespace WinCC.Host;
 internal sealed class CommandCenter : Window
 {
     private readonly Dashboard dashboard;
+    internal bool AllowShutdown { get; set; }
     private readonly StackPanel content = new() { Margin = new Thickness(22) };
     private readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 16) };
     private readonly DispatcherTimer topology = new() { Interval = TimeSpan.FromMilliseconds(350) };
@@ -23,7 +24,7 @@ internal sealed class CommandCenter : Window
     {
         this.dashboard = dashboard;
         Title = "WinCC · Command Center"; Width = 740; Height = 780; MinWidth = 500; MinHeight = 450;
-        Content = new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        Content = new LiquidGlass { Child = new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } };
         SourceInitialized += (_, _) => HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(Hook);
         Closing += OnClosing;
         topology.Tick += (_, _) => { topology.Stop(); dashboard.DisplayChanged(); };
@@ -41,9 +42,9 @@ internal sealed class CommandCenter : Window
     }
     private void OnClosing(object? sender, CancelEventArgs e)
     {
-        if (!dashboard.RequestExit()) { e.Cancel = true; return; }
-        dashboard.Dispose();
-        Dispatcher.BeginInvoke(new Action(() => Application.Current.Shutdown()));
+        if (AllowShutdown) return;
+        e.Cancel = true;
+        WindowState = WindowState.Minimized;
     }
     public void RefreshStatus() => status.Text = dashboard.Status;
     public void Refresh()
@@ -62,7 +63,12 @@ internal sealed class CommandCenter : Window
         }
         else AddButton(mode, "Edit Dashboard", dashboard.Enter, !dashboard.ReadOnly);
         AddButton(mode, "Show widgets", dashboard.Render);
-        AddButton(mode, "Exit WinCC", Close);
+        AddButton(mode, "Exit WinCC", () =>
+        {
+            if (!dashboard.RequestExit()) return;
+            dashboard.Dispose();
+            Application.Current.Shutdown();
+        });
         if (!dashboard.Windowed)
             Paragraph("Desktop positioning is experimental until verified on your Windows 11 build. " +
                       "If layering or input is wrong, exit and relaunch with --windowed for ordinary app windows.");
@@ -70,6 +76,15 @@ internal sealed class CommandCenter : Window
         var appearance = new WrapPanel(); content.Children.Add(appearance);
         foreach (string theme in new[] { "Winter Glass", "Midnight" })
             AddButton(appearance, theme == dashboard.Settings.Theme ? "✓ " + theme : theme, () => dashboard.ChangeTheme(theme));
+        var fonts = new WrapPanel(); content.Children.Add(fonts);
+        fonts.Children.Add(new TextBlock { Text = "Interface / widgets", VerticalAlignment = VerticalAlignment.Center });
+        var interfaceSize = new ComboBox { ItemsSource = new double[] { 12, 14, 16, 18, 20, 24, 28, 32 }, SelectedItem = dashboard.Settings.InterfaceFontSize };
+        var widgetSize = new ComboBox { ItemsSource = new double[] { 12, 14, 16, 18, 20, 24, 28, 32 }, SelectedItem = dashboard.Settings.WidgetFontSize };
+        System.Windows.Automation.AutomationProperties.SetName(interfaceSize, "Interface font size");
+        System.Windows.Automation.AutomationProperties.SetName(widgetSize, "Widget font size");
+        fonts.Children.Add(interfaceSize); fonts.Children.Add(widgetSize);
+        AddButton(fonts, "Apply text size", () => dashboard.ChangeFontSizes((double)interfaceSize.SelectedItem, (double)widgetSize.SelectedItem));
+        AddButton(fonts, "Reset text size", () => dashboard.ChangeFontSizes(18, 18));
         Heading("Optional connections");
         Paragraph("Weather sends the coordinates you enter to Open-Meteo (15-minute refresh). Spotify reads your local Windows media session. AI sends only the conversation you submit to OpenAI; API usage may incur charges.");
         var weather = new CheckBox { Content = "Connect weather · Open-Meteo", IsChecked = dashboard.Settings.WeatherEnabled, Margin = new Thickness(3) };
@@ -158,6 +173,8 @@ internal sealed class CommandCenter : Window
         Heading("Local data and recovery");
         Paragraph("Layout, independent notes, settings and bounded local diagnostics are stored in %LOCALAPPDATA%\\WinCC. " +
                   "No telemetry, auto-start or wallpaper integration. Optional providers stay disconnected until you configure or enable them.");
+        FontSize = dashboard.Settings.InterfaceFontSize;
+        Typography.Apply(content, dashboard.Settings.InterfaceFontSize / 14);
     }
     private void Heading(string text) => content.Children.Add(new TextBlock
         { Text = text, FontSize = 18, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 20, 0, 6) });

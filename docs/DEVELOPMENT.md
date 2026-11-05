@@ -15,7 +15,7 @@ dotnet build WinCC.sln -c Release --no-restore
 dotnet run --project src/WinCC.Host -c Release -- --windowed
 ```
 
-The first run is a valid blank canvas in Normal Mode. Enter Edit Dashboard, choose a display, add a Clock, and select Done. In desktop mode, only widget-sized windows exist; the Command Center remains a normal taskbar window. Closing it asks about unsaved data and exits everything. A second instance reports the existing process instead of creating duplicate widgets.
+The first run is a valid blank canvas in Normal Mode. Enter Edit Dashboard, choose a display, add a Clock, and select Done. In desktop mode, only widget-sized windows exist; the Command Center remains a normal taskbar window. Closing it minimizes the Command Center and keeps widgets running. Use Exit WinCC to quit; it asks about unsaved data. A second instance reports the existing process instead of creating duplicate widgets.
 
 Use `--windowed` for ordinary application windows; omit it to try desktop placement. Exit and restart to switch modes. Neither mode changes system settings, installs background services, registers hotkeys or enables startup. Desktop placement is an experiment pending the Windows matrix.
 
@@ -73,3 +73,11 @@ On this Linux cloud machine, the verified SDK is in `/workspace/tools/dotnet`. U
 5. For layering, display or input issues, exit and use `--windowed`. Record Windows edition/build, display arrangement/scaling, exact test ID and observations. Do not mark G1 passed or introduce an undocumented shell workaround.
 
 The complete platform checklist is [TEST-MATRIX.md](TEST-MATRIX.md); implementation limitations are [VALIDATION.md](VALIDATION.md).
+
+## Widget resizing and fonts
+
+Enter Edit Dashboard, then drag the full-width Resize handle at the bottom of any widget. Focus that handle and use arrows to resize by 1 DIP, or Shift+arrows for 10 DIP. Done saves; Cancel restores the layout. Normal Mode keeps geometry locked. Clock and provider content scroll at compact sizes.
+
+Typography defaults to [VT323 on Google Fonts](https://fonts.google.com/specimen/VT323), with [the Google Fonts CSS link](https://fonts.googleapis.com/css2?family=VT323&display=swap) documented in the font assets. WPF uses the bundled VT323 Regular TTF resource so text renders offline. Lato Regular/Bold remain available as bundled assets. The SIL Open Font License ships with the app.
+
+Under Appearance, choose separate interface and widget font sizes (12–32), then Apply text size. Reset text size restores 18 for both. Choices are saved in settings.json and apply independently of layout Edit Mode. Explicit heading/clock sizes scale proportionally; compact content remains scrollable.

@@ -11,6 +11,8 @@ namespace WinCC.Host;
 
 public sealed class UserSettings
 {
+    public double InterfaceFontSize { get; set; } = 18;
+    public double WidgetFontSize { get; set; } = 18;
     public string Theme { get; set; } = "Winter Glass";
     public List<string> Launchers { get; set; } = [];
     public bool WeatherEnabled { get; set; }
@@ -54,7 +56,8 @@ internal sealed class Dashboard : IDisposable
             {
                 if (new FileInfo(settingsFile).Length > 65536) throw new InvalidDataException();
                 Settings = JsonSerializer.Deserialize<UserSettings>(File.ReadAllBytes(settingsFile)) ?? throw new InvalidDataException();
-                if (Settings.Launchers is null || Settings.Launchers.Count > 100 ||
+                if (!double.IsFinite(Settings.InterfaceFontSize) || Settings.InterfaceFontSize is < 12 or > 32 ||
+                    !double.IsFinite(Settings.WidgetFontSize) || Settings.WidgetFontSize is < 12 or > 32 || Settings.Launchers is null || Settings.Launchers.Count > 100 ||
                     Settings.Theme is not ("Winter Glass" or "Midnight") ||
                     !double.IsFinite(Settings.Latitude) || Settings.Latitude is < -90 or > 90 ||
                     !double.IsFinite(Settings.Longitude) || Settings.Longitude is < -180 or > 180 ||
@@ -180,6 +183,19 @@ internal sealed class Dashboard : IDisposable
             }
         }); Render();
     }
+    public void ChangeFontSizes(double interfaceSize, double widgetSize)
+    {
+        if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
+        if (!double.IsFinite(interfaceSize) || interfaceSize is < 12 or > 32 ||
+            !double.IsFinite(widgetSize) || widgetSize is < 12 or > 32)
+            throw new InvalidOperationException("Font sizes must be between 12 and 32.");
+        var previousInterface = Settings.InterfaceFontSize;
+        var previousWidget = Settings.WidgetFontSize;
+        Settings.InterfaceFontSize = interfaceSize; Settings.WidgetFontSize = widgetSize;
+        try { SaveSettings(); }
+        catch { Settings.InterfaceFontSize = previousInterface; Settings.WidgetFontSize = previousWidget; throw; }
+        Render();
+    }
     public void ChangeTheme(string theme)
     {
         if (!settingsWritable) throw new InvalidOperationException("Settings are protected; archive the original settings file to recover.");
@@ -281,6 +297,7 @@ internal sealed class Dashboard : IDisposable
     public void Dispose()
     {
         if (disposing) return; disposing = true;
+        Center.AllowShutdown = true;
         lifecycle.Stop();
         foreach (var window in windows) window.Dispose();
         windows.Clear();

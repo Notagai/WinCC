@@ -16,7 +16,7 @@ dotnet run --project src/WinCC.Host -c Release -- --windowed
 
 The dev test command runs the dependency-free layout and provider contract suite; it does not require Windows. On Linux, use `bash tools/cloud-dotnet.sh run --project tests/WinCC.Layout.Tests -c Release`.
 
-Start in ordinary window mode first. Omit `--windowed` to try experimental desktop positioning. The Command Center stays available on the taskbar; closing it exits all widgets. Nothing changes Explorer, Wallpaper Engine or Windows startup settings.
+Start in ordinary window mode first. Omit `--windowed` to try experimental desktop positioning. The Command Center stays available on the taskbar; closing it minimizes the Command Center; Exit WinCC closes all widgets. Nothing changes Explorer, Wallpaper Engine or Windows startup settings.
 
 For a portable build that includes the runtime:
 
