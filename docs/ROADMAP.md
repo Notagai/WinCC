@@ -1,40 +1,47 @@
-# WinCC roadmap
+# WinCC roadmap and authorization gates
 
-## Phase 0: agent-ready planning (**current**)
+**CURRENT STATE: G0.** The owner requested detailed AI-agent readiness, **not application development**. Advancing to a gate needs a specifically authorized engineering task. Read [IMPLEMENTATION.md](IMPLEMENTATION.md) for exact work procedures and [TEST-MATRIX.md](TEST-MATRIX.md) for verification.
 
-- [x] Canonical instructions and agent entry points
-- [x] Product/architecture/safety documentation and decision record
-- [x] Issue/PR templates
-- [ ] Owner-authorized technical spike and confirmed technology choices
+## G0 — planning and precise agent instructions (current)
 
-**Gate:** This document does not authorize implementation. Wait for a specific, explicitly scoped engineering task.
+- [x] Canonical instructions (`AGENTS.md`) and agent entry points
+- [x] Product, security, architecture and decision documentation
+- [x] Precise implementation sequencing and platform API guidance
+- [x] Versioned state/bridge contracts and Windows 11 test matrix
+- [ ] Explicit owner authorization to start G1
 
-## Phase 1: Windows 11 desktop layering spike (future)
+No application code, scaffolding, assets, installer, background service or Windows changes.
 
-Compare native host window placement options, wallpaper visibility, input routing, window z-order, Explorer restart, virtual desktops and multi-monitor behavior.
+## G1 — native Windows desktop composition experiment
 
-**Exit criteria:** reproducible Windows 11 tests with OS build, failed-case notes and safe exit/fallback.
+1. Windows build/environment inventory.
+2. Compare native non-topmost and guarded shell-hosted approaches, each with a safe exit.
+3. Validate WPF transparency; compare WebView2, WebView2CompositionControl, native composition if necessary.
+4. Check wallpaper visibility, input passthrough, normal foreground windows, Start/taskbar, Explorer restart, renderer failure, force exit.
+5. Record evidence, failure modes and an ADR choosing the host/renderer.
 
-## Phase 2: minimum home-screen MVP (future)
+**Gate to G2:** Win11-specific required G1 tests pass (or owner explicitly accepts a documented limitation). Do not claim viable composition from HTML screenshots.
 
-Transparent native desktop host, one draggable clock widget, persistent widget position. Wallpaper Engine remains a separate process. No additional product modules unless requested.
+## G2 — minimal home MVP
 
-**Exit criteria:** ordinary windows work, wallpaper remains visible, layout survives restart and exit restores normal desktop behavior.
+1. One clock widget and draggable interaction with cancel and commit.
+2. Stable monitor-local geometry, validated host bridge and layout JSON.
+3. Atomic save/restore and crash-safe recovery.
+4. Explicit native exit when renderer fails.
+5. G2 tests passed on Windows 11.
 
-## Phase 3: customizable home (future)
+**Gate to G3:** all required G2 interaction, persistence and desktop safety tests have evidence.
 
-Widget architecture, launcher, search/shortcuts, saved layouts, themes, animations, accessibility.
+## G3 — expandable home UI
 
-## Phase 4: Windows integration and reliability (future)
+Widgets, launcher, themes, local settings, accessibility and user-approved interfaces. Do not add unnecessary external services.
 
-Optional startup registration, display/DPI/virtual desktop handling, Explorer recovery, fullscreen performance and settings.
+## G4 — Windows integration and reliability
 
-## Phase 5: packaging and testing (future)
+Multiple monitors/DPI/virtual desktops, Explorer recovery, performance tuning, optional and reversible auto-start.
 
-Diagnostics, clean uninstall, compatibility tests, versioned config migration and performance benchmarks.
+## G5 — packaging and release
 
-## First recommended engineering task
+Portable release first; if requested, installer/uninstaller with clean rollback; compatibility verification on supported Windows 11 builds.
 
-'Investigate Windows 11 desktop layering for WinCC and build the smallest approved proof-of-concept host.' The owner must authorize implementation first and define verification criteria.
-
-**Out of scope at every phase:** custom lock screen, Windows authentication, login UI and credential systems. Those belong to a separate repository.
+**Out of scope at every gate:** lock-screen, Windows sign-in, authentication/credentials and keyboard interception. Another repo handles that project.

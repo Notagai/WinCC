@@ -1,44 +1,47 @@
-# WinCC home-screen architecture (proposal)
+# WinCC architecture overview
 
-**Status:** candidate architecture; nothing implemented.
+**Status:** Proposed, unimplemented. Read [IMPLEMENTATION.md](IMPLEMENTATION.md) for normative work packages and [CONTRACTS.md](CONTRACTS.md) for planned message and state schemas.
 
-## Components
+## Mission and boundary
 
-1. **Native desktop host:** desktop window lifecycle and Windows 11 shell interop.
-2. **Home UI renderer:** widget and launcher interface, theme and animation layer.
-3. **Widget runtime:** component contracts and optional future modules.
-4. **Layout/state store:** local widget positions, preferences and versioned migrations.
-5. **Windows adapter:** Explorer events, DPI, monitors, virtual desktops, visibility and window order.
-6. **Settings/diagnostics:** local configuration, safe exit, and test logs.
-7. **Optional shell styling adapter:** Windhawk-related customization only if later approved and justified.
+WinCC provides **only** a Windows 11 home-screen/command-center UI. Wallpaper Engine is independent and optional; Explorer/taskbar remain normal. Any lock-screen or sign-in work belongs to another repo.
 
-Keep UI, widget state and Windows interop separate so desktop host changes do not require redesigning widgets.
+## Process/modules (future)
 
-## Candidate technology (not yet locked)
+```text
+Windows 11: Explorer / DWM / normal apps
+        |
+        +-- Wallpaper Engine (independent wallpaper process, if installed)
+        |
+        +-- WinCC.Host (normal user process)
+             |-- DesktopInterop (placement, display/DPI, shell recovery)
+             |-- UI Renderer (WPF + candidate WebView2 composition surface)
+             |-- Widget Runtime (clock first, launcher later)
+             |-- Layout Store (local versioned JSON)
+             |-- Diagnostics and native recovery/exit
+```
 
-- Host: C#/.NET + WPF; compare with WinUI 3 if technical spike warrants it.
-- UI: WebView2 + TypeScript/React; evaluate rendering cost and input transparency.
-- Storage: JSON initially; SQLite only if state gets complex.
-- Native interop: Win32 via narrow, auditable adapters.
-- Optional external customization: Windhawk compatibility, not a required dependency.
+No privileged service or driver is required for the current goal.
 
-Do not scaffold a complete stack until owner authorization and initial feasibility verification.
+## Required architectural separations
 
-## Wallpaper Engine layering
+- Desktop placement strategy is replaceable. UI code cannot know WorkerW/Progman details.
+- The host validates and owns window geometry, monitoring and persistence.
+- The frontend may request a widget move but cannot directly invoke arbitrary Win32 APIs, launch programs or change HWND parenting.
+- Renderer and native host lifecycles are separate enough to exit when browser rendering fails.
+- Monitor service supplies physical bounds, DPI and persistent logical monitor mapping.
+- Layout store works without Windows APIs so validation/migrations can be unit tested on any developer machine.
 
-- Wallpaper Engine owns the background; WinCC owns the home interface.
-- Do not control, inject into, or depend on Wallpaper Engine internals.
-- Evaluate normal desktop window, Progman/WorkerW placement and safe fallback approaches in a Windows 11 VM/test machine.
-- WorkerW/Progman is undocumented for permanent third-party hosting and may vary between OS builds.
-- Ensure interaction, keyboard focus and click-through behavior are deliberate. Do not place the interface always-on-top above regular apps.
-- Verify restart recovery, display updates, taskbar interactions and fullscreen behavior.
+## G1 unresolved platform risks
 
-## Minimum viable app test (future)
+Windows `WorkerW`/`Progman` desktop hosting is undocumented; a normal window may also fail required ordering. Both must be tested. A WPF WebView2 surface may conflict with layered window composition, despite a transparent browser background. Standard WPF WebView2 uses `HwndHost`, and composition control avoids some airspace problems but is not guaranteed to provide desired desktop/input behavior.
 
-A transparent home surface plus one draggable clock widget with persisted position. No automatic startup until the owner explicitly authorizes it. The app exits cleanly and leaves the desktop intact.
+The **first decision** is which host + renderer combination actually works on the target Windows 11 build. Do not begin a full React widget app before proving this.
 
-## Beyond MVP
+## Technical candidates
 
-Launcher, widget SDK, themes, multiple monitors, accessibility, performance, optional shell appearance integration, and packaging. No other Windows security or sign-in subsystem belongs here.
+WPF/.NET host; WebView2CompositionControl (compare standard WebView2); React/TypeScript UI only after verified host; Win32 native interop; local JSON state. Keep these as **candidates** until an owner-reviewed G1 ADR.
 
-See docs/SECURITY.md for desktop stability and local data requirements.
+## Evidence and error handling
+
+Every system-level change gets reproducible Windows 11 test steps and test IDs from [TEST-MATRIX.md](TEST-MATRIX.md). Desktop failures must fail visibly and recoverably, not leave hidden input-capturing windows. Crash/exit must never impair Windows Explorer or independent wallpapers.

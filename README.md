@@ -1,41 +1,34 @@
 # WinCC
 
-**WinCC (Windows Command Center)** is a planned customizable **Windows 11 home screen and desktop command center**.
+**WinCC (Windows Command Center)** is a planned customizable **Windows 11 desktop home screen and command center**.
 
-> **Status: Phase 0, AI-agent repository preparation only.** No executable product is implemented.
+> **Current phase: Phase 0, agent-ready specification only. No application code has been written.**
 
-## Vision
+## Project scope
 
-- Customizable home screen layered over or alongside **Wallpaper Engine**, without integrating with its internals.
-- Native Windows-hosted desktop surface with a flexible widget system, app launcher, and command-center UI.
-- Independent themes, local layout persistence, and reliable Windows desktop behavior.
+WinCC will provide a desktop-hosted home screen that coexists with Wallpaper Engine **without integrating with it**, eventually supporting widgets, a launcher, local layouts, custom themes and reliable Windows desktop behavior.
 
-**Scope boundary:** WinCC is only for the home screen/command center. A custom lock-screen project belongs in a different repository, if pursued later.
+**Not in this repository:** custom lock screen, credentials, biometrics, Windows authentication, sign-in UI, Win+L interception or system-login changes. Those belong to a separate project.
 
-## AI agent entry point
+## Start here for AI agents
 
-Read [AGENTS.md](AGENTS.md) first. This is the canonical workflow and scope guide for coding agents, including Codex, Claude Code, GitHub Copilot, and Cursor.
+**Read [AGENTS.md](AGENTS.md) before any change.** It makes phase boundaries and verification requirements explicit.
 
-| Document | Purpose |
+| Document | Contents |
 | --- | --- |
-| [Product brief](docs/PRODUCT.md) | Goals, requirements, and exclusions |
-| [Architecture](docs/ARCHITECTURE.md) | Proposed home-screen components |
-| [Roadmap](docs/ROADMAP.md) | Phased implementation and acceptance gates |
-| [Safety](docs/SECURITY.md) | Desktop stability and local-data safeguards |
-| [Decisions](docs/decisions/0001-planning-baseline.md) | Initial architecture assumptions |
+| [Product brief](docs/PRODUCT.md) | Goals and non-goals |
+| [Implementation spec](docs/IMPLEMENTATION.md) | Precise gates, Windows APIs, window behavior and build sequence |
+| [Contracts](docs/CONTRACTS.md) | Proposed layout JSON, coordinate system and UI/host messages |
+| [Windows test matrix](docs/TEST-MATRIX.md) | Manual repro steps, test IDs, expected results and evidence format |
+| [Architecture](docs/ARCHITECTURE.md) | Candidate native host and UI layout |
+| [Roadmap](docs/ROADMAP.md) | G0-G5 phase approvals |
+| [Operational safety](docs/SECURITY.md) | Exit, recovery and data safeguards |
+| [Decision log](docs/decisions/0001-planning-baseline.md) | Provisional design choices |
 
-All stack choices are provisional until tested and approved. Agents must not implement product features without an explicitly scoped task.
+## First engineering deliverable (only after owner approval)
 
-## First engineering milestone (future)
+**G1:** Demonstrate a Windows 11 transparent desktop host with real wallpaper visibility, correct interactivity, ordinary app window layering, and safe recovery. Choose a renderer based on measured G1 results rather than assumption.
 
-A transparent Windows 11 desktop surface with a movable clock widget whose position persists, while Wallpaper Engine remains independent and ordinary application windows behave normally.
+**G2:** Build the smallest usable home screen: one draggable clock widget, persisted position, and an obvious exit mechanism.
 
-## Repository status
-
-- [x] Agent instructions, planning documents, and task templates
-- [ ] Approved desktop-layer technical spike
-- [ ] Native desktop host
-- [ ] Home-screen widgets and launcher
-- [ ] Customization and resilience testing
-
-No build or test commands exist yet because this is a planning-only repository.
+No build, install, or test commands yet: executable work has not been authorized.

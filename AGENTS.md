@@ -1,50 +1,53 @@
 # WinCC Agent Instructions
 
-This is the **canonical instruction file** for AI agents contributing to WinCC.
+**This file is the canonical entry point for AI agents.** Treat the implementation specification and test contracts as authoritative for technical details.
 
-## Scope and authorization
+## Scope and current status
 
-WinCC is a **Windows 11 home screen / Windows Command Center only**. Its scope includes desktop UI, widget runtime, launcher, layout customization, Wallpaper Engine coexistence, and supporting Windows integration.
+**WinCC = Windows Command Center**, a customizable **Windows 11 desktop home screen**, independent of Wallpaper Engine. Features eventually include home widgets, launcher, saved layouts, settings and desktop resilience.
 
-**Do not add lock-screen, login, credential, biometric, authentication, Winlogon, or security-shortcut interception functionality to this repository.** Those are a separate potential project and are not part of WinCC.
+**ABSOLUTE SCOPE EXCLUSION:** No lock screen, authentication, credentials, login UI, biometrics, Winlogon, native Windows sign-in modifications, Win+L interception or any such work in WinCC. That is a different repository, not a later WinCC phase.
 
-**Current phase: Phase 0, repository planning only.** Do not implement or scaffold the executable product, runtime, or installer until the owner explicitly authorizes a bounded task. A roadmap entry is not implicit authorization.
+**PHASE 0 ONLY RIGHT NOW.** The repository contains planning documentation, not an executable product. Do not generate source code, scaffold an app, create an installer, commit assets or modify the Windows desktop without a specifically authorized task. A design spec is **not** an implementation request.
 
-## Before changes
+## Mandatory reading order
 
-1. Read README.md and docs/PRODUCT.md.
-2. Consult docs/ARCHITECTURE.md, docs/ROADMAP.md, docs/SECURITY.md and relevant ADRs.
-3. Inspect current files/issues/PRs; don't assume no other agent has made changes.
-4. State task boundaries, acceptance criteria, and assumptions before making significant changes.
-5. Treat stack choices as proposals, not settled implementation requirements.
+1. `README.md` — project status and scope.
+2. `docs/PRODUCT.md` — product intent and hard exclusions.
+3. `docs/IMPLEMENTATION.md` — detailed component plan, system behavior, dependencies and gate-by-gate work.
+4. `docs/CONTRACTS.md` — planned state, coordinates and host-UI messages.
+5. `docs/TEST-MATRIX.md` — required Windows 11 manual evidence and failure tests.
+6. `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/SECURITY.md`, and ADRs — context, task sequencing and recovery.
 
-## Engineering expectations
+If a specific issue conflicts with a security/scope exclusion, stop and flag it. If a technical design conflicts with Windows 11 observed behavior, record a failing test and propose an ADR, not an undocumented workaround.
 
-- Small, reversible, reviewable changes; one distinct task per PR.
-- Keep ordinary Explorer, taskbar, and Windows interaction functional.
-- Keep Wallpaper Engine independent, with no private API coupling or modification of its runtime.
-- UI and native Windows interop must be modular; avoid embedding undocumented shell assumptions in widget code.
-- Treat WorkerW/Progman positioning, z-order, clicks, virtual desktops, DPI, display changes, and Explorer restarts as unverified until tested on Windows 11.
-- No driver, process injection, shell patch, persistence, elevated helper, or privileged service unless separately scoped, justified, safely tested, and authorized.
-- No API keys, secrets, local identifiers, personal files, or machine configuration in commits.
-- Avoid new dependencies or automation with privileged access unless justified in the task.
-- Do not silently enforce a particular visual design or rewrite approved product goals.
+## Exact execution workflow for authorized future tasks
 
-## Verification and reporting
+1. **Establish phase/gate:** identify G1/G2/etc. and specific test IDs from TEST-MATRIX.md. Verify explicit owner authorization.
+2. **Inspect state:** look for changed branch head, active PRs, decisions, existing implementation and any other agent's work.
+3. **Plan:** name exact source files, APIs, public interfaces, expected Windows behavior, error/fallback and how to validate each requirement.
+4. **Implement minimal slice:** one component or experiment per reviewable PR. Never quietly jump to later gates.
+5. **Verify:** run real available tests and record commands/results. For native Windows behavior, state OS build and exact manual repro. If unavailable, mark `NOT RUN`, not passed.
+6. **Report:** scope, changed files, expected vs observed behavior, test IDs, known limitations, compatibility risks, recovery, rollback.
+7. **Maintain docs:** update spec or add a new ADR when a proposed choice becomes accepted. Do not silently mutate requirements to fit code.
 
-- If application work is authorized, include Windows 11 build and manual verification instructions for native behavior.
-- Test normal launch/exit, Explorer restart, wallpaper coexistence, monitor changes, and ordinary app window behavior where relevant.
-- Never claim Windows tests passed if the environment cannot run them.
-- Keep a nonintrusive, working exit/recovery mechanism before adding startup behavior.
-- Explain code changed, tests run, unverified assumptions, risks, and rollback in every PR.
-- Update decisions/documentation when choices become final.
+## Invariants
 
-## Source documents
+- Normal Windows Explorer/taskbar/Start and app foreground window behavior must remain intact.
+- Wallpaper Engine must continue to run and manage wallpaper **independently**. WinCC must not inject into it.
+- Do not build a permanent topmost overlay that blocks ordinary applications or desktop controls.
+- Desktop window techniques using Progman/WorkerW are undocumented and **experiments only** until proven on specified Windows builds.
+- Do not assume HTML transparency solves native host compositing or input pass-through. WPF/WebView2 `HwndHost` airspace is a known issue; compare `WebView2CompositionControl` and other renderers at G1.
+- Never assume Windows virtual desktop origin is (0,0); support negative monitor positions and per-monitor DPI.
+- Keep native Win32 interop in a small separate boundary, not inside React widget components.
+- App must have reliable exit/fallback **even when WebView2 is broken**; test process kill/Explorer restart.
+- No privileged services, shell replacement, process injection, driver, remote telemetry, auto-start or secret storage unless separately justified and authorized.
+- The exact implementation stack and package versions are not finalized. Record the choice after the G1 spike.
 
-- docs/PRODUCT.md: owner goals and explicit exclusions
-- docs/ARCHITECTURE.md: candidate home-screen architecture
-- docs/ROADMAP.md: progression and gates
-- docs/SECURITY.md: host stability and data safeguards
-- docs/decisions/: architecture records
+## PR review minimum
 
-If a request conflicts with the home-screen-only scope, do not implement it in WinCC; the owner can handle it in a different repository.
+PRs must name phase, acceptance test IDs, test environment, actual tests and results, untested assumptions, rollback, and whether docs/contracts changed. See `.github/pull_request_template.md`.
+
+### Decision priority
+
+Safety and scope exclusions > explicit owner task > approved ADRs > implementation contracts/specs > candidate architecture. Report conflicts openly instead of guessing.
