@@ -14,7 +14,7 @@ WinCC is a new repository for a Windows Command Center. The owner requested read
 3. Wallpaper Engine remains independent; no internal integration is assumed.
 4. WPF/.NET and WebView2/React are candidate technologies pending testing.
 5. Agent instructions and documentation can be prepared now; implementation requires explicit authorization.
-6. A future lock-screen experience is a separate repository, not a WinCC module or milestone.
+6. Custom lock-screen experiences are excluded from WinCC's scope and milestones.
 7. Desktop-host stability, multi-monitor behavior and normal Explorer usability are first-class requirements.
 
 ## Open decisions

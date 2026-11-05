@@ -14,7 +14,7 @@ The previously approved second mockup is an **optional Winter Glass starter pres
 
 1. **Date/time:** prominent local time (hours and minutes; 12/24-hour preference), day, weekday and full date. Date/time are actual system values, not hardcoded mockup data.
 2. **Calendar:** compact month grid immediately below the time. Today highlighted; month navigation; optional event indicators and selected-day agenda. Initial data source and event sync permissions remain undecided; a functioning local month calendar must not require cloud integration.
-3. **Spotify:** compact playback panel with cover art, title, artist, seek/progress, previous/play-pause/next, shuffle/repeat where supported. When no playback session is present, show a calm disconnected/idle state rather than fake track data. Spotify API and Geekify integration require a separate authorization and feasibility decision; do not assume full playback control is available.
+3. **Spotify:** compact playback panel with cover art, title, artist, seek/progress, previous/play-pause/next, shuffle/repeat where supported. When no playback session is present, show a calm disconnected/idle state rather than fake track data. Spotify API access or local media-session integration requires separate authorization and feasibility review; do not assume full playback control is available.
 
 ### Optional Winter Glass preset: right side
 

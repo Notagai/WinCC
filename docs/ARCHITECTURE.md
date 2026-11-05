@@ -4,7 +4,7 @@
 
 ## Mission and boundary
 
-WinCC provides **only** a Windows 11 home-screen/command-center UI. Its primary interaction model is a **freeform widget canvas** with locked Normal Mode and explicitly entered Edit Mode; see [CANVAS-EDITOR.md](CANVAS-EDITOR.md). Wallpaper Engine is independent and optional; Explorer/taskbar remain normal. Any lock-screen or sign-in work belongs to another repo.
+WinCC provides **only** a Windows 11 home-screen/command-center UI. Its primary interaction model is a **freeform widget canvas** with locked Normal Mode and explicitly entered Edit Mode; see [CANVAS-EDITOR.md](CANVAS-EDITOR.md). Wallpaper Engine is independent and optional; Explorer/taskbar remain normal. Lock-screen and sign-in work is excluded from this product.
 
 ## Process/modules (future)
 

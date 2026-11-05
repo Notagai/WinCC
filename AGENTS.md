@@ -6,7 +6,7 @@
 
 **WinCC = Windows Command Center**, a customizable **Windows 11 desktop home screen**, independent of Wallpaper Engine. Features eventually include home widgets, launcher, saved layouts, settings and desktop resilience.
 
-**ABSOLUTE SCOPE EXCLUSION:** No lock screen, authentication, credentials, login UI, biometrics, Winlogon, native Windows sign-in modifications, Win+L interception or any such work in WinCC. That is a different repository, not a later WinCC phase.
+**ABSOLUTE SCOPE EXCLUSION:** No lock screen, authentication, credentials, login UI, biometrics, Winlogon, native Windows sign-in modifications, Win+L interception or any such work in WinCC. These features are excluded from WinCC at every phase.
 
 **PHASE 0 ONLY RIGHT NOW.** The repository contains planning documentation, not an executable product. Do not generate source code, scaffold an app, create an installer, commit assets or modify the Windows desktop without a specifically authorized task. A design spec is **not** an implementation request.
 

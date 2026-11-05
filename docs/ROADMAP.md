@@ -45,4 +45,4 @@ Multiple monitors/DPI/virtual desktops, Explorer recovery, performance tuning, o
 
 Portable release first; if requested, installer/uninstaller with clean rollback; compatibility verification on supported Windows 11 builds.
 
-**Out of scope at every gate:** lock-screen, Windows sign-in, authentication/credentials and keyboard interception. Another repo handles that project.
+**Out of scope at every gate:** lock-screen, Windows sign-in, authentication/credentials and keyboard interception. These features are excluded from WinCC.

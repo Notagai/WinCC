@@ -29,7 +29,7 @@ Create a highly customizable home screen and command center that is visually lay
 
 ## Explicit exclusions
 
-- All custom lock-screen, Windows sign-in, credential, biometric, and authentication functionality belongs to a **different project/repository**.
+- Custom lock-screen, Windows sign-in, credential, biometric and authentication functionality is **out of scope**.
 - No Windows session security, shortcut suppression, or logon integration in WinCC.
 - No executable application, UI implementation, installer or background service during Phase 0.
 - No Wallpaper Engine injection or dependency on private internals.

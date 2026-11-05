@@ -1,6 +1,6 @@
 # WinCC — precise implementation specification
 
-> **Status:** Future engineering specification, not implemented. **Phase 0 only** until the owner explicitly authorizes engineering. WinCC is a **Windows 11 home screen / desktop command center**. Anything related to custom locking or sign-in belongs to another repository.
+> **Status:** Future engineering specification, not implemented. **Phase 0 only** until the owner explicitly authorizes engineering. WinCC is a **Windows 11 home screen / desktop command center**. Custom locking and sign-in are out of scope.
 >
 > **Normative language:** MUST = required when implementing this scope; SHOULD = recommended and deviation requires explanation; EXPERIMENT = behavior not verified and not safe to assume.
 
@@ -192,11 +192,11 @@ For every task, agent MUST:
 4. Include unit/bridge tests for pure logic and a Windows 11 manual test checklist for platform-specific functionality.
 5. Report **observed results** separately from expectations; if testing on Windows is unavailable, say “not tested on Windows.”
 6. Document fallback/recovery and relevant logs; link an ADR if design deviates from this spec.
-7. Never start unrelated features or work on another repo without authorization.
+7. Never start unrelated features or modify unrelated code without authorization.
 
 ## 8. Non-negotiable repository scope
 
-WinCC is only the **Windows home screen/command center**. Do not add lock screen, login UI, credentials, biometrics, reserved-key interception, Winlogon, or Windows authentication components. Those are a different project.
+WinCC is only the **Windows home screen/command center**. Do not add lock screen, login UI, credentials, biometrics, reserved-key interception, Winlogon, or Windows authentication components. They are not part of this product.
 
 ## 9. Specification references
 

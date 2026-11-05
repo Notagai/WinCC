@@ -20,7 +20,7 @@ See **[freeform canvas specification](docs/CANVAS-EDITOR.md)**, **[dashboard vis
 
 WinCC will provide a desktop-hosted home screen that coexists with Wallpaper Engine **without integrating with it**, eventually supporting widgets, a launcher, local layouts, custom themes and reliable Windows desktop behavior.
 
-**Not in this repository:** custom lock screen, credentials, biometrics, Windows authentication, sign-in UI, Win+L interception or system-login changes. Those belong to a separate project.
+**Not in this repository:** custom lock screen, credentials, biometrics, Windows authentication, sign-in UI, Win+L interception or system-login changes. These are explicitly outside WinCC's scope.
 
 ## Start here for AI agents
 
