@@ -49,7 +49,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         FontSize = dashboard.Settings.WidgetFontSize;
         Title = "WinCC · " + WidgetCatalog.Get(widget.Type).Name;
         Width = widget.RectDip.Width; Height = widget.RectDip.Height;
-        ShowActivated = false; ShowInTaskbar = dashboard.Windowed;
+        ShowActivated = false; ShowInTaskbar = false;
         WindowStyle = dashboard.Windowed ? WindowStyle.SingleBorderWindow : WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
         AllowsTransparency = !dashboard.Windowed;
@@ -64,7 +64,11 @@ internal sealed class WidgetWindow : Window, IDisposable
         var body = new Grid { ClipToBounds = true };
         Grid.SetRow(body, 1); grid.Children.Add(body);
         BuildContent(body);
-        SourceInitialized += (_, _) => HwndSource.FromHwnd(Handle)?.AddHook(Hook);
+        SourceInitialized += (_, _) =>
+        {
+            Desktop.ConfigureWidgetWindow(Handle);
+            HwndSource.FromHwnd(Handle)?.AddHook(Hook);
+        };
         Loaded += (_, _) => { ApplyPlacement(); UpdateLive(); tick.Start(); };
         tick.Tick += (_, _) => { if (IsVisible && WindowState != WindowState.Minimized) UpdateLive(); };
         noteSave.Tick += (_, _) => { noteSave.Stop(); FlushNote(); };

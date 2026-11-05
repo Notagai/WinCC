@@ -31,6 +31,18 @@ public static class Desktop
         return displays;
     }
 
+    /// <summary>Keep widget surfaces out of Alt+Tab and Task View without changing their owner or focus behavior.</summary>
+    public static void ConfigureWidgetWindow(nint handle)
+    {
+        const int extendedStyle = -20;
+        const long toolWindow = 0x80, appWindow = 0x40000;
+        long style = Native.GetWindowLongPtr(handle, extendedStyle).ToInt64();
+        Marshal.SetLastPInvokeError(0);
+        var previous = Native.SetWindowLongPtr(handle, extendedStyle, new nint((style | toolWindow) & ~appWindow));
+        if (previous == 0 && Marshal.GetLastPInvokeError() != 0)
+            throw new Win32Exception(Marshal.GetLastPInvokeError());
+    }
+
     public static void Place(nint handle, int x, int y, int width, int height, bool desktop)
     {
         // No activation, ownership, parenting, style changes or topmost windows.
@@ -84,6 +96,10 @@ public static class Desktop
         [StructLayout(LayoutKind.Sequential)] public struct WindowPosition
         { public nint Window, InsertAfter; public int X, Y, Width, Height; public uint Flags; }
         public delegate bool MonitorCallback(nint monitor, nint dc, nint rect, nint data);
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
+        public static extern nint GetWindowLongPtr(nint handle, int index);
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+        public static extern nint SetWindowLongPtr(nint handle, int index, nint value);
         [DllImport("user32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool EnumDisplayMonitors(nint dc, nint clip, MonitorCallback callback, nint data);
         [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetMonitorInfoW")]
