@@ -8,12 +8,20 @@
 
 Create a highly customizable home screen and command center that is visually layered over or alongside Wallpaper Engine while remaining an independent Windows application. This is a **desktop experience**, not a Windows shell replacement requirement.
 
+## Core interaction model (approved)
+
+- WinCC is a **blank, freeform desktop canvas**, not a permanently docked two-column dashboard.
+- **Normal Mode (default):** widget placement, size, collection, and stacking order are locked; normal widget functions still work, including editing note contents.
+- **Edit Mode:** explicitly entered by the user; add, remove, drag, resize and reorder widgets with visible handles, optional alignment guides, Undo/Redo, Cancel, and Done. Done validates and durably saves the draft; Cancel restores the previous saved layout.
+- A layout with zero widgets is valid. The approved glass two-column screenshot is an **optional starter preset**, not a constraint.
+- See [CANVAS-EDITOR.md](CANVAS-EDITOR.md) for precise state machine, pointer semantics, persistence, and acceptance criteria.
+
 ## Future feature targets
 
 - Desktop-level, transparent native surface behind ordinary apps and above the animated wallpaper where feasible.
 - Launcher, pinned app shortcuts, search and command controls.
 - Widgets: an initial clock, then extensible system, calendar and media modules when requested.
-- Movable, resizable, hideable widgets and persistent local layout settings.
+- User-addable, removable, movable, resizable, and reorderable widgets in **Edit Mode only**, with persistent local layouts. Geometry stays locked in Normal Mode.
 - Customizable visual design without hardwiring one specific aesthetic.
 - Multiple monitors, virtual desktops, Windows display scaling, fullscreen apps and Explorer restarts.
 - Wallpaper Engine remains optional and independently controlled; normal Windows usability must not depend on it.
@@ -31,7 +39,7 @@ Create a highly customizable home screen and command center that is visually lay
 
 1. Start and close a Windows 11 native desktop host without impairing Explorer.
 2. Place a transparent home UI so Wallpaper Engine can remain visible.
-3. Drag a clock widget and retain its location after restarting WinCC.
+3. Enter Edit Mode, drag and resize a clock, select Done, and retain its geometry after restarting WinCC. Verify geometry cannot be changed in Normal Mode.
 4. Keep ordinary application windows above the custom desktop surface.
 5. Provide an exit/fallback if desktop positioning fails.
 6. Document reproducible test results and compatibility limitations.

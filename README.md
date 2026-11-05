@@ -4,17 +4,17 @@
 
 > **Current phase: Phase 0, agent-ready specification only. No application code has been written.**
 
-## Approved dashboard design
+## Approved dashboard: blank canvas with two modes
 
-The owner approved the **second** blue-gray glass dashboard visualization, over a snowy floating-islands / white-tree Wallpaper Engine wallpaper.
+**WinCC is a freeform widget canvas**, not a fixed two-column dashboard.
 
-- **Left:** large local clock/date, calendar, Spotify.
-- **Right:** live system data, weather, editable freeform notes.
-- **Top center:** responsive Dynamic Island that expands into an AI chat.
-- **Center:** clear view of Wallpaper Engine's wallpaper.
-- **Bottom:** preserve the actual Windows 11 taskbar, not an unrequested custom dock.
+- **Normal Mode (default):** widgets remain fixed in place and cannot be moved, resized, added or removed. Their controls still work, including editing notes and opening AI chat.
+- **Edit Mode:** add, move, resize, remove and reorder widgets with visible handles, optional guides, Undo/Redo, **Done** to save, and **Cancel** to revert.
+- **Blank canvas is valid:** start with zero widgets or choose an optional preset. The blue-gray glass mockup is a *Winter Glass example layout*, not a mandatory arrangement.
+- **Available planned widgets:** date/time, calendar, Spotify, system metrics, weather, editable notes and expandable AI Dynamic Island.
+- Wallpaper Engine remains visible; the real Windows 11 taskbar stays intact.
 
-See **[dashboard design specification](docs/DASHBOARD-DESIGN.md)** and **[repository-local layout schematic](design/dashboard-layout.svg)**. The schematic is not the original generated raster mockup. Sample values in designs are illustrative.
+See **[freeform canvas specification](docs/CANVAS-EDITOR.md)**, **[dashboard visual style](docs/DASHBOARD-DESIGN.md)**, and **[example preset diagram](design/dashboard-layout.svg)**. Sample data in design images is illustrative.
 
 ## Project scope
 
@@ -28,8 +28,9 @@ WinCC will provide a desktop-hosted home screen that coexists with Wallpaper Eng
 
 | Document | Contents |
 | --- | --- |
-| [Dashboard design](docs/DASHBOARD-DESIGN.md) | Approved widget arrangement, behavior and visual style |
-| [Dashboard schematic](design/dashboard-layout.svg) | Visual placement reference |
+| [Canvas and Edit Mode](docs/CANVAS-EDITOR.md) | Normative freeform layout, Normal/Edit modes, save/cancel and resize rules |
+| [Dashboard design](docs/DASHBOARD-DESIGN.md) | Approved widgets, optional Winter Glass preset and visual style |
+| [Dashboard schematic](design/dashboard-layout.svg) | Example optional starter preset, not fixed placement |
 | [Product brief](docs/PRODUCT.md) | Goals and non-goals |
 | [Implementation spec](docs/IMPLEMENTATION.md) | Precise gates, Windows APIs, window behavior and build sequence |
 | [Contracts](docs/CONTRACTS.md) | Proposed layout JSON, coordinate system and UI/host messages |

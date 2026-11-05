@@ -52,6 +52,15 @@ PRs must name phase, acceptance test IDs, test environment, actual tests and res
 
 Safety and scope exclusions > explicit owner task > approved ADRs > implementation contracts/specs > candidate architecture. Report conflicts openly instead of guessing.
 
-## Approved dashboard appearance and functionality
+## Approved canvas and dashboard interaction
 
-Read **docs/DASHBOARD-DESIGN.md** and **design/dashboard-layout.svg** before proposing any WinCC UI. The owner approved the second visual mockup: left clock/date → calendar → Spotify; right system monitoring → weather → editable notes; top-center expandable AI Dynamic Island; central wallpaper unobstructed. Keep the native Windows taskbar. The layout diagram is a schematic, **not** a pixel-perfect copy of the generated raster mockup. Do not hardcode sample song names, dates, temperatures, or hardware metrics. Design approval does not authorize application implementation or alter gate sequencing.
+**READ [docs/CANVAS-EDITOR.md](docs/CANVAS-EDITOR.md) before designing any WinCC UI or widget geometry.** The owner explicitly superseded the old fixed two-column arrangement.
+
+- WinCC is a **blank freeform canvas**. Zero widgets is valid.
+- **Normal Mode (default):** no adding/removing, dragging, resizing or changing z-order; widget content remains interactive, including editable notes, Spotify, calendar and AI.
+- **Edit Mode:** deliberate entry, visible handles, add/remove, drag/resize, z-order, Undo/Redo, Done to durably save, Cancel to discard. Crash returns to last durable Normal Mode layout.
+- Layout geometry is monitor-local DIP and host-validated. The dashboard screenshot and [design/dashboard-layout.svg](design/dashboard-layout.svg) are an **optional Winter Glass preset**, not mandatory columns.
+- Keep Wallpaper Engine independent and the real Windows taskbar. Do not hardcode sample songs, dates, temperatures or system metrics.
+- No app implementation is authorized yet. Preserve G0 and G1/G2 gate ordering.
+
+Visual appearance and planned widget types are in **docs/DASHBOARD-DESIGN.md**. When docs conflict, CANVAS-EDITOR.md governs layout/editing behavior.

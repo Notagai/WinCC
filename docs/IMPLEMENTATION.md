@@ -12,7 +12,7 @@ Release gates, in order:
 
 - **G0 — Repository-only (current):** docs and agent tooling, no executable code.
 - **G1 — Window composition spike:** prove native desktop positioning, transparency, click handling, ordinary window stacking, and recovery on Windows 11. Do not build widgets until G1 is reviewed.
-- **G2 — Minimal home:** one draggable clock, persistence, basic diagnostics and exit path.
+- **G2 — Minimal canvas:** Normal Mode and Edit Mode with one clock; move/resize only in Edit Mode, Done/Cancel, persistence, diagnostics and safe exit.
 - **G3 — Widgets and launcher:** modular widget API, launcher, settings and themes.
 - **G4 — Reliability:** monitor/DPI/virtual-desktop transitions, Explorer restart and user-optional startup.
 - **G5 — Packaging:** controlled install, rollback, performance and compatibility sign-off.
@@ -49,6 +49,7 @@ WinCC/
   docs/
     IMPLEMENTATION.md
     CONTRACTS.md
+    CANVAS-EDITOR.md
     TEST-MATRIX.md
     decisions/
   src/
@@ -140,32 +141,35 @@ Authorized only after G1 approval.
 
 ### 4.2 First widget
 
-- Exactly one clock widget for G2. Use system local time read from the host or browser clock, with locale-aware formatting; no network requirement.
-- Interaction states: idle, hover, drag-start, dragging, drag-end, saving, error.
-- Drag begins on a deliberate handle/region, not arbitrary text selection.
-- Pointer-down records the origin in a well-defined coordinate space; pointer-move previews position; pointer-up commits one update. Escape cancels and restores the last committed position.
-- Clamp widget geometry within the chosen monitor's usable bounds, reserving for the taskbar according to a documented policy.
-- Restore layout on restart without sudden jumps. Preserve usable layout when monitors or scale change.
+- Exactly one clock widget for G2. Use system local time with locale-aware formatting; no network requirement.
+- **Normal Mode** is the startup default. The clock works but cannot be dragged or resized. No edit handles appear.
+- Explicit **Edit Mode** permits dragging and resizing the clock by dedicated handles; no other widget interactions may accidentally initiate movement.
+- Pointer-down captures origin; pointer-move updates a draft preview; pointer-up adds one undoable draft mutation. Escape during a gesture cancels that gesture only.
+- Show **Done** and **Cancel**. Done validates and durably saves the draft before returning to Normal Mode. Cancel restores the last durable layout. Save failure keeps Edit Mode open.
+- Clamp widget geometry within monitor work area and per-type minimum/maximum sizes. Restore layout on restart without jumps, even when monitors or scaling change.
+- **G2 proof must include both modes**, not merely a draggable clock. The full catalog/add/remove workflow belongs to G3.
+- See [CANVAS-EDITOR.md](CANVAS-EDITOR.md) for the authoritative behavior and state machine.
 
 ### 4.3 Local persistence
 
 `%LOCALAPPDATA%\WinCC\layout.json` is the proposed user-level layout location (not committed to git). Create the directory lazily. Schema and examples are in docs/CONTRACTS.md.
 
 - Validate every field and reject malformed/out-of-range data without crashing.
-- Debounce updates; initial proposal **250 ms** after last drag commit (validate during performance testing).
+- Layout geometry and widget collection changes are staged in memory during Edit Mode. **Only Done persists the validated draft**. Do not debounce disk writes for pointer movement. Functional widget content (for example, notes text later) may autosave independently.
 - Write a temp file **in the same directory**, flush, and atomically replace/move into place using a suitable Windows filesystem operation. Keep a last-known-good copy when overwriting.
 - After interrupted writes, restore a verified valid prior copy or fresh default and report a nonblocking diagnostic warning.
 - Explicit `schemaVersion` and migration tests. No silent deletion of unknown saved data.
 
 ### 4.4 Acceptance criteria
 
-G2 succeeds only if the clock is visible over Wallpaper Engine, can be dragged with a pointer, remains behind normal apps, its last committed position survives full WinCC exit/relaunch, Windows desktop controls still work, and a forced WinCC crash leaves the desktop usable. Each criterion requires a test record.
+G2 succeeds only if the clock is visible over Wallpaper Engine, **cannot move/resize in Normal Mode**, can be moved/resized in Edit Mode, Done durably saves the new geometry, Cancel discards draft changes, a forced crash during editing restores the last saved layout in Normal Mode, normal app windows remain above the dashboard, and the desktop stays usable. Each criterion requires a test record.
 
 ## 5. G3: launcher, widget API and theming
 
 Develop behind independent interfaces so replacing the native hosting approach does not rewrite widgets.
 
-- Widget contract: stable ID, type, geometry, versioned config, lifecycle hooks, optional commands and accessibility labels.
+- Widget contract: stable ID, type, geometry, per-type min/max size and resize behavior, versioned config, lifecycle hooks, optional commands and accessibility labels.
+- Build an Add Widget catalog, remove/undo, widget stacking, optional snapping and alignment guides, and per-monitor freeform placement. Never enforce the screenshot's two-column arrangement. A zero-widget canvas is valid.
 - Widget state is declarative; native host owns persistence and validated system commands.
 - Launcher data sources and app launching must be local and opt-in. Resolve only approved targets; never execute arbitrary command strings received from an untrusted WebView event.
 - Host-to-frontend bridge is an explicit allowlist with versioned request/response messages, validation, bounded payloads, and request correlation IDs (docs/CONTRACTS.md).
@@ -196,6 +200,7 @@ WinCC is only the **Windows home screen/command center**. Do not add lock screen
 
 ## 9. Specification references
 
+- docs/CANVAS-EDITOR.md — approved blank canvas, Edit/Normal modes and interaction semantics
 - docs/CONTRACTS.md — proposed layout/state/bridge formats
 - docs/TEST-MATRIX.md — test IDs, expected outcomes and run record template
 - docs/ROADMAP.md — approval gates

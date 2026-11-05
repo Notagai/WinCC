@@ -2,6 +2,12 @@
 
 > Planning specification only. These schemas are not implemented or approved for implementation until the owner authorizes G2. Format names, versions and numeric defaults are subject to recorded ADRs.
 
+## 0. Canvas editing authority
+
+See [CANVAS-EDITOR.md](CANVAS-EDITOR.md). Geometry, z-order and widget collection changes are permitted **only in Edit Mode**. Normal Mode is the default on every launch. Edit Mode holds an in-memory **draft** and a snapshot of the last durable layout. **Done** validates and saves the entire draft atomically; **Cancel** discards it. Do not persist each drag or pointer movement. Notes text and other functional widget data are stored separately from layout and remain editable in Normal Mode.
+
+The JSON example below is an illustrative saved layout, **not** a forced default. An empty `widgets: []` array is valid. The earlier two-column arrangement is only an optional preset.
+
 ## 1. Layout file
 
 Path proposal: `%LOCALAPPDATA%\WinCC\layout.json`
@@ -35,10 +41,10 @@ Illustrative JSON (not a fixture or a real user layout):
 
 - `schemaVersion`: integer, currently proposed `1`; reject unsupported major versions with safe default and preserve the original file.
 - `activeProfileId`, profile `id`, widget `id`: unique bounded strings; IDs are not filenames or shell command targets.
-- `type`: explicit allowlisted widget type. G2 allowlist: `clock`.
+- `type`: explicit allowlisted widget type. G2 allowlist: `clock`; later catalog: `calendar`, `spotify`, `system`, `weather`, `notes`, `ai-island`.
 - `monitorKey`: logical persisted monitor identity. The placeholder `primary` resolves on each start to the current primary display. More stable identities for secondary screens require an accepted monitor-ID strategy; never persist `HMONITOR`.
 - `rectDip`: monitor-local logical DIPs (96 units/inch). Not desktop-absolute physical pixels. `x`, `y`, `width`, `height` must be finite, bounded numbers; `width > 0`, `height > 0`. Clip/relocate to usable display area at restore.
-- `zIndex`: only orders widgets relative to other **WinCC widgets**, never global Windows HWND z-order.
+- `zIndex`: only orders widgets relative to other **WinCC widgets**, never global Windows HWND z-order. Intentional overlaps are permitted, and Edit Mode must provide a way to select obscured widgets.
 - `settings`: per-widget schema, validated by widget type. For clock, `hourFormat` is `system`, `12`, or `24`.
 - Reject duplicate widget IDs, unrecognized commands, unexpected types and oversized file content.
 - Define an upper file-size threshold in the implementation ADR; avoid silently allowing unbounded JSON.
@@ -92,10 +98,21 @@ Example, conceptual Host → UI acknowledgement:
 }
 ```
 
-### G2 allowlist
+### Proposed G2 mode-aware allowlist
 
-UI → Host: `app.bootstrap.request`, `widget.position.commit`, `app.exit.request`.
-Host → UI: `app.bootstrap.result`, `widget.position.result`, `monitors.changed`, `app.error`.
+UI → Host: `app.bootstrap.request`, `editor.enter.request`, `editor.draft.update`, `editor.done.request`, `editor.cancel.request`, `app.exit.request`.
+
+Host → UI: `app.bootstrap.result`, `editor.mode.changed`, `editor.draft.result`, `editor.save.result`, `monitors.changed`, `app.error`.
+
+- `editor.enter.request`: explicit user-initiated entry; host snapshots the current durable layout and creates a draft.
+- `editor.draft.update`: add/remove/move/resize/z-order mutation with validated widget IDs, type constraints and monitor-local geometry; host rejects outside Edit Mode. Pointer moves can preview locally without sending one native request per pixel.
+- `editor.done.request`: validate the **entire** draft, persist it durably, and switch to Normal Mode only on success.
+- `editor.cancel.request`: discard draft and return to Normal Mode; require confirmation when unsaved changes would be lost.
+- `editor.save.result`: report **disk persistence** success/failure, not merely in-memory acceptance.
+
+The previous `widget.position.commit` example is a **legacy conceptual geometry payload**, not a direct Normal Mode API. Any geometry mutation must be wrapped in an Edit Mode transaction and must not be independently persisted during a drag.
+
+All message types are planning proposals and require a protocol ADR before implementation.
 
 Do **not** add a generic `execute`, `powershell`, `launch` or `invokeNative` method. Future launcher commands require their own validated, specific protocol and authorization model.
 
@@ -110,9 +127,9 @@ Do **not** add a generic `execute`, `powershell`, `launch` or `invokeNative` met
 
 ## 4. Persistence expectations
 
-- Debounce position commits, write to a same-volume temp file and perform a replace/move using robust Windows filesystem semantics.
+- Persist layout on successful **Done** only, not on every pointer movement. Write to a same-volume temp file and perform a replace/move using robust Windows filesystem semantics.
 - Keep backup or last-known-good data; validate on load.
-- Handle shutdown/force-crash recovery, inaccessible configuration folder, malformed JSON and future schema versions.
+- Handle shutdown/force-crash recovery, inaccessible configuration folder, malformed JSON and future schema versions. An interrupted Edit Mode session restores the previous durable layout and launches in Normal Mode.
 - Do not silently overwrite incompatible layout formats.
 
 ## 5. Diagnostics event taxonomy
@@ -141,8 +158,10 @@ IMonitorTopology
 
 ILayoutRepository
   Load() -> validated layout or recovery status
-  Commit(layout) -> in-memory accepted state
-  Flush() -> persist result
+  BeginDraft() -> editable snapshot of durable state
+  ApplyDraftMutation(change) -> validated draft result
+  SaveDraftAndExitEditMode() -> durable save result
+  DiscardDraft() -> restore prior layout
 
 IWidgetCatalog
   Resolve(widgetType, schemaVersion) -> known widget schema

@@ -4,7 +4,7 @@
 
 ## Mission and boundary
 
-WinCC provides **only** a Windows 11 home-screen/command-center UI. Wallpaper Engine is independent and optional; Explorer/taskbar remain normal. Any lock-screen or sign-in work belongs to another repo.
+WinCC provides **only** a Windows 11 home-screen/command-center UI. Its primary interaction model is a **freeform widget canvas** with locked Normal Mode and explicitly entered Edit Mode; see [CANVAS-EDITOR.md](CANVAS-EDITOR.md). Wallpaper Engine is independent and optional; Explorer/taskbar remain normal. Any lock-screen or sign-in work belongs to another repo.
 
 ## Process/modules (future)
 
@@ -26,11 +26,11 @@ No privileged service or driver is required for the current goal.
 ## Required architectural separations
 
 - Desktop placement strategy is replaceable. UI code cannot know WorkerW/Progman details.
-- The host validates and owns window geometry, monitoring and persistence.
+- The host validates and owns window geometry, monitoring and persistence. Edit Mode mutations are staged in an in-memory draft and durably committed only on Done; Normal Mode rejects geometry changes.
 - The frontend may request a widget move but cannot directly invoke arbitrary Win32 APIs, launch programs or change HWND parenting.
 - Renderer and native host lifecycles are separate enough to exit when browser rendering fails.
 - Monitor service supplies physical bounds, DPI and persistent logical monitor mapping.
-- Layout store works without Windows APIs so validation/migrations can be unit tested on any developer machine.
+- Layout store works without Windows APIs so validation/migrations can be unit tested on any developer machine. A zero-widget layout is valid; the approved two-column mockup is an optional preset, not a forced layout.
 
 ## G1 unresolved platform risks
 

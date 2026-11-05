@@ -8,6 +8,7 @@
 - [x] Product, security, architecture and decision documentation
 - [x] Precise implementation sequencing and platform API guidance
 - [x] Versioned state/bridge contracts and Windows 11 test matrix
+- [x] Freeform canvas + Edit/Normal mode product specification
 - [ ] Explicit owner authorization to start G1
 
 No application code, scaffolding, assets, installer, background service or Windows changes.
@@ -22,19 +23,19 @@ No application code, scaffolding, assets, installer, background service or Windo
 
 **Gate to G2:** Win11-specific required G1 tests pass (or owner explicitly accepts a documented limitation). Do not claim viable composition from HTML screenshots.
 
-## G2 — minimal home MVP
+## G2 — minimal freeform canvas MVP
 
-1. One clock widget and draggable interaction with cancel and commit.
-2. Stable monitor-local geometry, validated host bridge and layout JSON.
-3. Atomic save/restore and crash-safe recovery.
-4. Explicit native exit when renderer fails.
-5. G2 tests passed on Windows 11.
+1. Default **Normal Mode**: one clock works, but cannot move or resize.
+2. Explicit **Edit Mode**: move and resize clock using edit-only handles; Done saves atomically, Cancel reverts.
+3. Stable monitor-local geometry, validated host bridge and layout JSON; crash during edit returns to last saved layout in Normal Mode.
+4. Explicit native exit when renderer fails, and no blocked desktop input.
+5. G2 tests for both modes passed on Windows 11. See [CANVAS-EDITOR.md](CANVAS-EDITOR.md).
 
 **Gate to G3:** all required G2 interaction, persistence and desktop safety tests have evidence.
 
 ## G3 — expandable home UI
 
-Widgets, launcher, themes, local settings, accessibility and user-approved interfaces. Do not add unnecessary external services.
+Widget catalog (add/remove), arbitrary freeform placement, resize constraints, z-order, optional snapping, undo/redo, launcher, themes, local settings, accessibility and user-approved interfaces. The earlier two-column mockup is only an optional preset. Do not add unnecessary external services.
 
 ## G4 — Windows integration and reliability
 

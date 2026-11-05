@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1650 928" role="img" aria-labelledby="title desc">
-<title id="title">WinCC approved dashboard layout schematic</title>
-<desc id="desc">Translucent left stack for clock, calendar and Spotify; right stack for system data, weather and notes; centered Dynamic Island AI chat; clear center reserved for Wallpaper Engine.</desc>
+<title id="title">WinCC optional Winter Glass starter layout schematic</title>
+<desc id="desc">Optional Winter Glass example preset with translucent clock, calendar, Spotify, system, weather, notes and AI island. WinCC is a freeform canvas: every widget may be moved and resized in Edit Mode, and layout is locked in Normal Mode.</desc>
 <defs>
 <linearGradient id="bg" x2=".7" y2="1"><stop stop-color="#8eb4d6"/><stop offset=".55" stop-color="#53789d"/><stop offset="1" stop-color="#243f5c"/></linearGradient>
 <linearGradient id="glass" x2="1" y2="1"><stop stop-color="#172e4c" stop-opacity=".83"/><stop offset="1" stop-color="#233a55" stop-opacity=".75"/></linearGradient>
@@ -50,5 +50,5 @@
 <g stroke="#7799bf" stroke-width="10" stroke-linecap="round"><path d="M1388 106H1595"/><path d="M1388 146H1595"/><path d="M1388 186H1595"/></g>
 <g stroke="#b1a0f3" stroke-width="10" stroke-linecap="round"><path d="M1388 106H1450"/><path d="M1388 146H1495"/><path d="M1388 186H1525"/></g>
 <rect x="0" y="885" width="1650" height="43" fill="#14283f" opacity=".85"/>
-<text x="825" y="912" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="17" fill="#e2edf8">Windows taskbar preserved (not a custom dock)</text>
+<text x="825" y="912" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="17" fill="#e2edf8">Optional preset only • Edit Mode permits free placement • Windows taskbar preserved</text>
 </svg>
