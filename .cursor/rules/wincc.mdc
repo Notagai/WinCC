@@ -1,0 +1,6 @@
+---
+description: WinCC project-wide agent rules
+alwaysApply: true
+---
+
+Follow AGENTS.md at the repository root as the source of truth. The current phase is agent preparation only, not application implementation. Read docs/PRODUCT.md, docs/ARCHITECTURE.md, docs/ROADMAP.md, and docs/SECURITY.md before making a plan. Respect the native Windows authentication boundary.

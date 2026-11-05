@@ -1,0 +1,44 @@
+# Windows / editors
+Thumbs.db
+Desktop.ini
+.vs/
+.vscode/.ropeproject/
+.idea/
+*.user
+*.suo
+*.sln.docstates
+
+# .NET / native outputs
+bin/
+obj/
+Debug/
+Release/
+x64/
+x86/
+artifacts/
+TestResults/
+*.pdb
+*.ilk
+*.log
+
+# JS / WebView builds
+node_modules/
+dist/
+build/
+coverage/
+.pnpm-store/
+
+# local data / secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pfx
+*.p12
+*.pem
+*.secret
+secrets.json
+appsettings.Local.json
+*.db
+*.db-shm
+*.db-wal
