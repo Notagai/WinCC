@@ -8,7 +8,7 @@
 
 **ABSOLUTE SCOPE EXCLUSION:** No lock screen, authentication, credentials, login UI, biometrics, Winlogon, native Windows sign-in modifications, Win+L interception or any such work in WinCC. These features are excluded from WinCC at every phase.
 
-**PHASE 0 ONLY RIGHT NOW.** The repository contains planning documentation, not an executable product. Do not generate source code, scaffold an app, create an installer, commit assets or modify the Windows desktop without a specifically authorized task. A design spec is **not** an implementation request.
+**IMPLEMENTATION AUTHORIZED:** On 2026-11-05 the owner requested the entire project. The repository now contains an implementation candidate; see `docs/DEVELOPMENT.md`, `docs/VALIDATION.md`, and ADR 0003. This supersedes the former G0-only restriction. It does not establish Windows acceptance: G1 and native G2/G3/G4 tests remain unverified. A design spec alone is still not authorization for unrelated features, Windows changes, or installation/persistence.
 
 ## Mandatory reading order
 
@@ -61,6 +61,6 @@ Safety and scope exclusions > explicit owner task > approved ADRs > implementati
 - **Edit Mode:** deliberate entry, visible handles, add/remove, drag/resize, z-order, Undo/Redo, Done to durably save, Cancel to discard. Crash returns to last durable Normal Mode layout.
 - Layout geometry is monitor-local DIP and host-validated. The dashboard screenshot and [design/dashboard-layout.svg](design/dashboard-layout.svg) are an **optional Winter Glass preset**, not mandatory columns.
 - Keep Wallpaper Engine independent and the real Windows taskbar. Do not hardcode sample songs, dates, temperatures or system metrics.
-- No app implementation is authorized yet. Preserve G0 and G1/G2 gate ordering.
+- Implementation is authorized by the owner's subsequent request. Preserve acceptance gate reporting: do not mark Windows-native gates passed from compilation or pure tests.
 
 Visual appearance and planned widget types are in **docs/DASHBOARD-DESIGN.md**. When docs conflict, CANVAS-EDITOR.md governs layout/editing behavior.

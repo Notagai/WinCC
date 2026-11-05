@@ -27,4 +27,4 @@ This document concerns **desktop reliability and local data** for a Windows 11 h
 
 ## Development rules
 
-No functionality is implemented during Phase 0. New behavior needs explicit scope, tests and a rollback path. Record assumptions and compatibility problems rather than claiming untested features work.
+The original Phase 0 baseline had no functionality. The owner subsequently authorized an implementation candidate (ADR 0003). New behavior still needs explicit scope, tests and a rollback path. Record assumptions and compatibility problems rather than claiming untested features work. Optional provider behavior and credential handling are described in [development instructions](DEVELOPMENT.md).

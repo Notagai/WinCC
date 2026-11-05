@@ -2,6 +2,8 @@
 
 > Test plan for future implementation, **not evidence of passed tests**. Every G1/G2 check starts `NOT RUN`. AI agents must never mark Windows-native tests PASSED without running them on an actual Windows 11 environment.
 
+An implementation candidate now exists. [VALIDATION.md](VALIDATION.md) records Linux build/contract evidence separately. All Windows-native entries below remain **NOT RUN**; core tests associated with an ID do not pass the entire UI/native case.
+
 ## Test protocol
 
 For each test run, capture:

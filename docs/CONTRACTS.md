@@ -1,6 +1,6 @@
 # WinCC data and interface contracts (proposed)
 
-> Planning specification only. These schemas are not implemented or approved for implementation until the owner authorizes G2. Format names, versions and numeric defaults are subject to recorded ADRs.
+> Schema-1 layout and transaction contracts are implemented as a candidate after owner authorization. The WebView message protocol below remains a planning proposal: the current native WPF renderer calls typed local methods and exposes no executable bridge. See [ADR 0003](decisions/0003-native-implementation-candidate.md) and [validation](VALIDATION.md).
 
 ## 0. Canvas editing authority
 

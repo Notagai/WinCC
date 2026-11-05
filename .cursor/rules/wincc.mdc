@@ -3,4 +3,4 @@ description: WinCC Windows 11 home screen project rules
 alwaysApply: true
 ---
 
-Follow AGENTS.md at the repository root as the canonical instructions. WinCC only builds the Windows home screen and command center; do not add Windows sign-in or lock-screen functionality. The current phase is planning and agent preparation only. Read docs/PRODUCT.md, docs/ARCHITECTURE.md, docs/ROADMAP.md and docs/SECURITY.md before making a plan.
+Follow AGENTS.md at the repository root as the canonical instructions. WinCC only builds the Windows home screen and command center; do not add Windows sign-in or lock-screen functionality. Implementation was authorized after G0; native acceptance remains unverified. Read docs/DEVELOPMENT.md, docs/VALIDATION.md, docs/PRODUCT.md, docs/ARCHITECTURE.md, docs/ROADMAP.md and docs/SECURITY.md before changes.

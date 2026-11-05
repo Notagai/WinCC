@@ -1,6 +1,6 @@
 # WinCC — precise implementation specification
 
-> **Status:** Future engineering specification, not implemented. **Phase 0 only** until the owner explicitly authorizes engineering. WinCC is a **Windows 11 home screen / desktop command center**. Custom locking and sign-in are out of scope.
+> **Status:** Normative engineering specification. The owner subsequently authorized an implementation candidate; see [ADR 0003](decisions/0003-native-implementation-candidate.md), [development](DEVELOPMENT.md) and [validation](VALIDATION.md). G1 and Windows acceptance remain unverified. WinCC is a **Windows 11 home screen / desktop command center**. Custom locking and sign-in are out of scope.
 >
 > **Normative language:** MUST = required when implementing this scope; SHOULD = recommended and deviation requires explanation; EXPERIMENT = behavior not verified and not safe to assume.
 
@@ -10,14 +10,14 @@ The goal is a desktop surface that lets the user's independent Wallpaper Engine 
 
 Release gates, in order:
 
-- **G0 — Repository-only (current):** docs and agent tooling, no executable code.
+- **G0 — Repository-only (historical baseline):** docs and agent tooling, no executable code.
 - **G1 — Window composition spike:** prove native desktop positioning, transparency, click handling, ordinary window stacking, and recovery on Windows 11. Do not build widgets until G1 is reviewed.
 - **G2 — Minimal canvas:** Normal Mode and Edit Mode with one clock; move/resize only in Edit Mode, Done/Cancel, persistence, diagnostics and safe exit.
 - **G3 — Widgets and launcher:** modular widget API, launcher, settings and themes.
 - **G4 — Reliability:** monitor/DPI/virtual-desktop transitions, Explorer restart and user-optional startup.
 - **G5 — Packaging:** controlled install, rollback, performance and compatibility sign-off.
 
-An agent **MUST NOT** implement later gates while the present gate is unapproved. Each gate should be a separate PR with observed evidence. A failed G1 is not solved by inventing fake UI behavior.
+Normally an agent **MUST NOT** implement later gates while the present gate is unapproved. The owner's subsequent entire-project request authorized a broader implementation candidate (ADR 0003); it did not pass acceptance gates. Each gate still requires observed evidence. A failed or unrun G1 is not solved by inventing fake UI behavior.
 
 ## 1. Proposed technology decisions (to validate at G1)
 

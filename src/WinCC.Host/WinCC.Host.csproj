@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>WinCC</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../WinCC.Layout/WinCC.Layout.csproj" />
+    <ProjectReference Include="../WinCC.DesktopInterop/WinCC.DesktopInterop.csproj" />
+    <ProjectReference Include="../WinCC.Integrations/WinCC.Integrations.csproj" />
+  </ItemGroup>
+</Project>

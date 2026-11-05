@@ -1,17 +1,17 @@
 # WinCC roadmap and authorization gates
 
-**CURRENT STATE: G0.** The owner requested detailed AI-agent readiness, **not application development**. Advancing to a gate needs a specifically authorized engineering task. Read [IMPLEMENTATION.md](IMPLEMENTATION.md) for exact work procedures and [TEST-MATRIX.md](TEST-MATRIX.md) for verification.
+**CURRENT STATE: Implementation candidate; Windows release gates unverified.** The owner's subsequent entire-project request authorized development after the G0 baseline. See [ADR 0003](decisions/0003-native-implementation-candidate.md) and [actual evidence](VALIDATION.md). Implemented features do not imply G1/G2/G3/G4 acceptance. Read [IMPLEMENTATION.md](IMPLEMENTATION.md) and [TEST-MATRIX.md](TEST-MATRIX.md) for verification.
 
-## G0 — planning and precise agent instructions (current)
+## G0 — planning and precise agent instructions (historical)
 
 - [x] Canonical instructions (`AGENTS.md`) and agent entry points
 - [x] Product, security, architecture and decision documentation
 - [x] Precise implementation sequencing and platform API guidance
 - [x] Versioned state/bridge contracts and Windows 11 test matrix
 - [x] Freeform canvas + Edit/Normal mode product specification
-- [ ] Explicit owner authorization to start G1
+- [x] Explicit owner authorization to implement the project (subsequent request; ADR 0003)
 
-No application code, scaffolding, assets, installer, background service or Windows changes.
+The original baseline had no application code. The current candidate includes native source, portable packaging and contracts; it installs no background service and makes no Windows configuration changes.
 
 ## G1 — native Windows desktop composition experiment
 

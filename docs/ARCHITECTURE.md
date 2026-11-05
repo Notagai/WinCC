@@ -1,6 +1,6 @@
 # WinCC architecture overview
 
-**Status:** Proposed, unimplemented. Read [IMPLEMENTATION.md](IMPLEMENTATION.md) for normative work packages and [CONTRACTS.md](CONTRACTS.md) for planned message and state schemas.
+**Status:** Original candidate architecture with a native implementation now available. [ADR 0003](decisions/0003-native-implementation-candidate.md) records the implemented WPF choice: `WinCC.Host` owns UI/lifecycle, `WinCC.DesktopInterop` owns Win32 and local media sessions, `WinCC.Layout` owns transactions/storage, and `WinCC.Integrations` owns optional HTTP providers. No browser renderer or frontend bridge is used. See [development](DEVELOPMENT.md) and [validation](VALIDATION.md). The alternative renderer discussion below remains unverified G1 context.
 
 ## Mission and boundary
 

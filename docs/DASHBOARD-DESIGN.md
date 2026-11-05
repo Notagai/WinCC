@@ -1,6 +1,6 @@
 # WinCC dashboard — approved visual direction
 
-**Status:** Design direction approved by owner; **documentation only**. No code or product implementation authorized. **Reference:** the *second* generated dashboard mockup in the design conversation, over the user's existing snowy floating-island / white-tree Wallpaper Engine desktop. The image is a visual reference, not a literal data source.
+**Status:** Owner-approved design direction, with an implementation candidate now authorized; see [ADR 0003](decisions/0003-native-implementation-candidate.md) and [validation](VALIDATION.md). Windows rendering acceptance remains unverified. **Reference:** the *second* generated dashboard mockup in the design conversation, over the user's existing snowy floating-island / white-tree Wallpaper Engine desktop. The image is a visual reference, not a literal data source.
 
 > The accompanying [layout diagram](../design/dashboard-layout.svg) is a **vector schematic** committed to GitHub so agents have a repository-local visual reference. It is not a pixel-perfect copy of the generated screenshot or the user's wallpaper.
 

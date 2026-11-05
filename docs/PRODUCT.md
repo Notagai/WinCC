@@ -44,4 +44,4 @@ Create a highly customizable home screen and command center that is visually lay
 5. Provide an exit/fallback if desktop positioning fails.
 6. Document reproducible test results and compatibility limitations.
 
-These are acceptance criteria for future approved work, not implementation authorization.
+The owner subsequently authorized implementation (ADR 0003). These remain acceptance criteria requiring Windows evidence; authorization does not establish that they passed. See [validation](VALIDATION.md).

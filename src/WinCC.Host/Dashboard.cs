@@ -1,0 +1,289 @@
+using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Threading;
+using WinCC.DesktopInterop;
+using WinCC.Layout;
+using WinCC.Integrations;
+
+namespace WinCC.Host;
+
+public sealed class UserSettings
+{
+    public string Theme { get; set; } = "Winter Glass";
+    public List<string> Launchers { get; set; } = [];
+    public bool WeatherEnabled { get; set; }
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+    public bool Fahrenheit { get; set; }
+    public bool SpotifyEnabled { get; set; }
+    public string AiModel { get; set; } = "gpt-5-mini";
+}
+
+internal sealed class Dashboard : IDisposable
+{
+    private readonly LayoutStore store = new(Path.Combine(Paths.Data, "layout.json"));
+    private readonly List<WidgetWindow> windows = [];
+    private readonly DispatcherTimer lifecycle = new() { Interval = TimeSpan.FromSeconds(2) };
+    private readonly string settingsFile = Path.Combine(Paths.Data, "settings.json");
+    private bool disposing;
+    private bool stacking, stackPending;
+    private bool settingsWritable = true;
+    public bool Windowed { get; }
+    public bool ReadOnly { get; }
+    public EditorSession Editor { get; }
+    public NotesStore Notes { get; } = new(Path.Combine(Paths.Data, "notes"));
+    public UserSettings Settings { get; private set; } = new();
+    public System.Net.Http.HttpClient Http { get; } = ProviderHttp.CreateClient();
+    public Dictionary<string, List<ChatMessage>> Chats { get; } = [];
+    public Dictionary<string, string> ChatDrafts { get; } = [];
+    public IReadOnlyList<MonitorArea> Monitors { get; private set; } = [];
+    public CommandCenter Center { get; }
+    public string Status { get; private set; } = "Normal Mode · Your layout is locked.";
+
+    public Dashboard(bool windowed)
+    {
+        Windowed = windowed;
+        var loaded = store.Load(); ReadOnly = loaded.ReadOnly;
+        Editor = new(loaded.Document);
+        if (loaded.Warning is not null) Status = loaded.Warning;
+        try
+        {
+            if (File.Exists(settingsFile))
+            {
+                if (new FileInfo(settingsFile).Length > 65536) throw new InvalidDataException();
+                Settings = JsonSerializer.Deserialize<UserSettings>(File.ReadAllBytes(settingsFile)) ?? throw new InvalidDataException();
+                if (Settings.Launchers is null || Settings.Launchers.Count > 100 ||
+                    Settings.Theme is not ("Winter Glass" or "Midnight") ||
+                    !double.IsFinite(Settings.Latitude) || Settings.Latitude is < -90 or > 90 ||
+                    !double.IsFinite(Settings.Longitude) || Settings.Longitude is < -180 or > 180 ||
+                    string.IsNullOrWhiteSpace(Settings.AiModel) || Settings.AiModel.Length > 100) throw new InvalidDataException();
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
+        {
+            Settings = new(); settingsWritable = false;
+            Status = "Settings could not be read; original preserved. Settings changes are disabled.";
+        }
+        RefreshMonitors();
+        Center = new(this);
+        lifecycle.Tick += (_, _) => CheckLifecycle();
+    }
+    public void Start()
+    {
+        Center.Show(); Render(); lifecycle.Start();
+    }
+    public void Action(Action action)
+    {
+        try { action(); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or
+                                     InvalidOperationException or System.ComponentModel.Win32Exception or JsonException)
+        {
+            Notify(e is InvalidOperationException ? e.Message : "Operation failed. Your saved data is preserved. " + e.Message);
+            Log.Write("operation.failed", e.GetType().Name);
+        }
+    }
+    public void Notify(string text) { Status = text; Center.RefreshStatus(); }
+    public void Enter()
+    {
+        if (ReadOnly) { Notify("Layout saving is disabled to protect the original file. See recovery instructions."); return; }
+        Editor.Enter(); Notify("Edit Mode · Changes are drafts until you choose Done."); Render();
+    }
+    public void Done()
+    {
+        if (!FlushNotes()) return;
+        // Require saved geometry to fit a present target; absent monitors retain their saved association.
+        foreach (var w in Editor.Current.Active.Widgets)
+        {
+            var m = Monitors.FirstOrDefault(m => m.Key == w.MonitorKey || w.MonitorKey == "primary" && m.Primary);
+            if (m is not null && (w.RectDip.X + w.RectDip.Width > m.WidthDip + 0.1 ||
+                                  w.RectDip.Y + w.RectDip.Height > m.HeightDip + 0.1))
+                throw new InvalidOperationException("A widget exceeds its display work area. Move or resize it before saving.");
+        }
+        Editor.Done(store); Log.Write("layout.saved", "done");
+        Notify("Normal Mode · Layout saved."); Render();
+    }
+    public void Cancel()
+    {
+        if (Editor.IsDirty && MessageBox.Show(Center, "Discard all unsaved layout changes? Notes are saved separately.",
+                "Cancel editing", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        Editor.Cancel(); Notify("Normal Mode · Draft discarded."); Render();
+    }
+    public void Render()
+    {
+        if (!FlushNotes()) return;
+        foreach (var window in windows) window.Dispose();
+        windows.Clear();
+        foreach (var widget in Editor.Current.Active.Widgets.OrderByDescending(w => w.ZIndex))
+        {
+            var window = new WidgetWindow(this, widget);
+            windows.Add(window); window.Show(); window.ApplyPlacement();
+        }
+        Center.Refresh();
+    }
+    public void Add(string type, string monitorKey)
+    {
+        var spec = WidgetCatalog.Get(type);
+        var monitor = Geometry.Resolve(monitorKey, Monitors);
+        if (monitor.WidthDip < spec.MinWidth || monitor.HeightDip < spec.MinHeight)
+            throw new InvalidOperationException("This display is too small for that widget at its current scale.");
+        var rect = Geometry.Clamp(new((monitor.WidthDip - spec.Width) / 2,
+            (monitor.HeightDip - spec.Height) / 2, spec.Width, spec.Height), spec, monitor);
+        Editor.Change(d => d.Active.Widgets.Add(new(Guid.NewGuid().ToString("N"), type, monitor.Key, rect,
+            d.Active.Widgets.Count, [])));
+        Render();
+    }
+    public void Remove(string id)
+    {
+        Editor.Change(d => d.Active.Widgets.RemoveAll(w => w.Id == id)); Render();
+    }
+    public void Reorder(string id, int direction)
+    {
+        Editor.Change(d =>
+        {
+            var ordered = d.Active.Widgets.OrderBy(w => w.ZIndex).ToList();
+            int from = ordered.FindIndex(w => w.Id == id);
+            int to = Math.Clamp(from + direction, 0, ordered.Count - 1);
+            (ordered[from], ordered[to]) = (ordered[to], ordered[from]);
+            d.Active.Widgets.Clear();
+            d.Active.Widgets.AddRange(ordered.Select((w, i) => w with { ZIndex = i }));
+        }); Render();
+    }
+    public void MoveTo(string id, string monitorKey)
+    {
+        var w = Editor.Current.Active.Widgets.Single(w => w.Id == id);
+        var m = Geometry.Resolve(monitorKey, Monitors); var spec = WidgetCatalog.Get(w.Type);
+        if (m.WidthDip < spec.MinWidth || m.HeightDip < spec.MinHeight)
+            throw new InvalidOperationException("The target display is too small for this widget.");
+        Editor.Update(w with { MonitorKey = m.Key, RectDip = Geometry.Clamp(w.RectDip, spec, m) }); Render();
+    }
+    public void Preset()
+    {
+        var m = Geometry.Resolve("primary", Monitors);
+        // This is an optional, undoable draft operation. Never apply it on startup.
+        string[] types = ["clock", "calendar", "spotify", "system", "weather", "notes", "ai-island"];
+        Editor.Change(d =>
+        {
+            d.Active.Widgets.Clear();
+            double leftY = 20, rightY = 20;
+            foreach (var type in types)
+            {
+                var s = WidgetCatalog.Get(type);
+                if (m.WidthDip < s.MinWidth || m.HeightDip < s.MinHeight) continue;
+                bool left = type is "clock" or "calendar" or "spotify";
+                double x = type == "ai-island" ? (m.WidthDip - s.Width) / 2 : left ? 20 : m.WidthDip - s.Width - 20;
+                double y = type == "ai-island" ? 20 : left ? leftY : rightY;
+                var r = Geometry.Clamp(new(x, y, s.Width, s.Height), s, m);
+                d.Active.Widgets.Add(new(Guid.NewGuid().ToString("N"), type, m.Key, r, d.Active.Widgets.Count, []));
+                if (left) leftY += s.Height + 16; else rightY += s.Height + 16;
+            }
+        }); Render();
+    }
+    public void ChangeTheme(string theme)
+    {
+        if (!settingsWritable) throw new InvalidOperationException("Settings are protected; archive the original settings file to recover.");
+        string previous = Settings.Theme; Settings.Theme = theme;
+        try { SaveSettings(); } catch { Settings.Theme = previous; throw; }
+        Render();
+    }
+    public void ConfigureProviders(bool weatherEnabled, double latitude, double longitude, bool fahrenheit, bool spotify, string model)
+    {
+        if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
+        if (!double.IsFinite(latitude) || latitude is < -90 or > 90 || !double.IsFinite(longitude) || longitude is < -180 or > 180)
+            throw new InvalidOperationException("Enter valid latitude (−90 to 90) and longitude (−180 to 180).");
+        if (string.IsNullOrWhiteSpace(model) || model.Length > 100) throw new InvalidOperationException("Enter a valid AI model name.");
+        var previous = JsonSerializer.SerializeToUtf8Bytes(Settings);
+        Settings.WeatherEnabled = weatherEnabled; Settings.Latitude = latitude; Settings.Longitude = longitude;
+        Settings.Fahrenheit = fahrenheit; Settings.SpotifyEnabled = spotify; Settings.AiModel = model;
+        try { SaveSettings(); } catch { Settings = JsonSerializer.Deserialize<UserSettings>(previous)!; throw; }
+        Render(); Notify("Provider preferences saved. Weather and Spotify connect only when enabled. AI sends only when you choose Send.");
+    }
+    public void AddLauncher(string path)
+    {
+        if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
+        if (!ValidTarget(path)) throw new InvalidOperationException("Choose an existing local .exe or .lnk file.");
+        if (Settings.Launchers.Contains(path)) return;
+        if (Settings.Launchers.Count >= 100) throw new InvalidOperationException("Launcher limit reached.");
+        Settings.Launchers.Add(path);
+        try { SaveSettings(); } catch { Settings.Launchers.Remove(path); throw; }
+        Center.Refresh();
+    }
+    public void RemoveLauncher(string path)
+    {
+        if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
+        var previous = Settings.Launchers.ToList(); Settings.Launchers.Remove(path);
+        try { SaveSettings(); } catch { Settings.Launchers = previous; throw; }
+        Center.Refresh();
+    }
+    public void Launch(string path)
+    {
+        if (!Settings.Launchers.Contains(path) || !ValidTarget(path)) throw new InvalidOperationException("Launcher target is unavailable.");
+        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+    }
+    private static bool ValidTarget(string path) => Path.IsPathFullyQualified(path) && !path.StartsWith(@"\\", StringComparison.Ordinal) &&
+        (Path.GetExtension(path).Equals(".exe", StringComparison.OrdinalIgnoreCase) ||
+         Path.GetExtension(path).Equals(".lnk", StringComparison.OrdinalIgnoreCase)) && File.Exists(path);
+    private void SaveSettings() => AtomicFile.Write(settingsFile, JsonSerializer.SerializeToUtf8Bytes(Settings), backup: true);
+    private bool FlushNotes()
+    {
+        bool okay = true;
+        foreach (var w in windows) if (!w.FlushNote()) okay = false;
+        return okay;
+    }
+    public bool RequestExit()
+    {
+        if (!FlushNotes() && MessageBox.Show(Center, "Some notes could not be saved. Exit anyway and lose those unsaved edits?",
+                "Unsaved notes", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return false;
+        if (Editor.IsDirty && MessageBox.Show(Center, "Exit and discard the unsaved layout draft?",
+                "Unsaved layout", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return false;
+        return true;
+    }
+    private void RefreshMonitors()
+    {
+        Monitors = Desktop.Displays().Select(d => new MonitorArea(d.Key, d.Left, d.Top,
+            d.Width / d.Scale, d.Height / d.Scale, d.Scale, d.Primary)).ToArray();
+        if (Monitors.Count == 0) throw new InvalidOperationException("No usable displays were found.");
+    }
+    public void DisplayChanged() => Action(() =>
+    {
+        RefreshMonitors();
+        foreach (var window in windows) window.ApplyPlacement();
+        Center.Refresh(); Log.Write("display.topology.changed", "reprojected_without_saving");
+    });
+    public nint AnchorFor(WidgetWindow window)
+    {
+        var ordered = windows.Where(w => w.Handle != 0).OrderByDescending(w => w.ZIndex).ToList();
+        int index = ordered.IndexOf(window);
+        return index <= 0 ? new nint(1) : ordered[index - 1].Handle;
+    }
+    public void QueueStack()
+    {
+        if (Windowed || disposing || stacking || stackPending) return;
+        stackPending = true;
+        Center.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            stackPending = false; if (disposing) return;
+            stacking = true;
+            try { Action(() => { foreach (var window in windows.OrderByDescending(w => w.ZIndex)) window.ApplyPlacement(); }); }
+            finally { stacking = false; }
+        }));
+    }
+    private void CheckLifecycle()
+    {
+        foreach (var window in windows)
+        {
+            bool hidden = !Windowed && Desktop.IsForegroundFullscreen(window.Handle);
+            if (hidden && window.IsVisible) window.Hide();
+            else if (!hidden && !window.IsVisible) { window.Show(); window.ApplyPlacement(); }
+        }
+    }
+    public void Dispose()
+    {
+        if (disposing) return; disposing = true;
+        lifecycle.Stop();
+        foreach (var window in windows) window.Dispose();
+        windows.Clear();
+        Http.Dispose();
+    }
+}

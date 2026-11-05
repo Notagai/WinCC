@@ -1,6 +1,6 @@
 # WinCC freeform canvas and Edit Mode — approved product behavior
 
-> **Status:** Owner-approved product interaction specification, documentation only. No executable implementation authorized. This supersedes any earlier statement that WinCC widgets must occupy fixed left/right columns.
+> **Status:** Owner-approved product interaction specification, implemented as a candidate after subsequent owner authorization; see [ADR 0003](decisions/0003-native-implementation-candidate.md) and [validation](VALIDATION.md). Native UI acceptance remains unverified. This supersedes any earlier statement that WinCC widgets must occupy fixed left/right columns.
 
 ## Product model
 
@@ -91,4 +91,4 @@ Add/execute the mode-specific cases in [TEST-MATRIX.md](TEST-MATRIX.md): normal-
 
 ## Implementation authorization
 
-Current repository state is **G0, specification only**. The G1 desktop-composition spike must establish correct input and z-order behavior. A future G2 should demonstrate the Edit/Normal distinction with one clock widget, but only after an explicit owner-approved implementation task. Do not build the application from this document alone.
+The owner subsequently authorized project implementation (ADR 0003). The G1 desktop-composition checks must still establish correct input and z-order behavior on Windows 11. Automated state-machine contracts do not pass native G2 acceptance. This specification alone does not authorize unrelated features.
