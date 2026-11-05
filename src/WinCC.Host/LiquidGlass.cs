@@ -8,6 +8,7 @@ namespace WinCC.Host;
 /// <summary>App-owned vector glass material. No DWM, Acrylic, Mica or backdrop APIs.</summary>
 internal sealed class LiquidGlass : Decorator
 {
+    public string Material { get; set; } = "center";
     private Point light = new(.28, .12);
     public LiquidGlass()
     {
@@ -34,6 +35,18 @@ internal sealed class LiquidGlass : Decorator
         body.GradientStops.Add(new(Color.FromArgb(226, 23, 31, 48), .48));
         body.GradientStops.Add(new(Color.FromArgb(240, 39, 43, 63), 1));
         dc.DrawRectangle(body, null, rect);
+        Color accent = Material switch
+        {
+            "clock" => Color.FromArgb(45, 92, 179, 255),
+            "calendar" => Color.FromArgb(50, 180, 123, 255),
+            "notes" => Color.FromArgb(45, 223, 175, 83),
+            "system" => Color.FromArgb(45, 60, 210, 228),
+            "spotify" => Color.FromArgb(45, 60, 206, 120),
+            "weather" => Color.FromArgb(50, 80, 163, 255),
+            "ai-island" => Color.FromArgb(50, 194, 97, 240),
+            _ => Color.FromArgb(20, 120, 150, 210)
+        };
+        dc.DrawRectangle(new LinearGradientBrush(accent, Colors.Transparent, 70), null, rect);
         var glow = new RadialGradientBrush(Color.FromArgb(75, 224, 243, 255), Colors.Transparent)
         { Center = light, GradientOrigin = light, RadiusX = .8, RadiusY = .9 };
         dc.DrawRectangle(glow, null, rect);

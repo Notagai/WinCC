@@ -81,3 +81,7 @@ Enter Edit Dashboard, then drag the full-width Resize handle at the bottom of an
 Typography defaults to [VT323 on Google Fonts](https://fonts.google.com/specimen/VT323), with [the Google Fonts CSS link](https://fonts.googleapis.com/css2?family=VT323&display=swap) documented in the font assets. WPF uses the bundled VT323 Regular TTF resource so text renders offline. Lato Regular/Bold remain available as bundled assets. The SIL Open Font License ships with the app.
 
 Under Appearance, choose separate interface and widget font sizes (12–32), then Apply text size. Reset text size restores 18 for both. Choices are saved in settings.json and apply independently of layout Edit Mode. Explicit heading/clock sizes scale proportionally; compact content remains scrollable.
+
+## Custom widget interfaces
+
+The calendar month grid and keyboard/mouse seek rail are implemented by WinCC (MonthView and SeekRail), replacing the platform calendar/slider visuals. Each widget has its own accent material and content composition: oversized clock, purple date navigator, warm notes workspace, cyan performance panel, green music player, blue forecast and violet conversation island. Text editing uses an app-defined input template over WPF text-editing primitives. Native file pickers remain for choosing/exporting user files. Windows UI visual acceptance is still pending.

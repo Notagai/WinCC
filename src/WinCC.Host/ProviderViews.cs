@@ -48,7 +48,7 @@ internal abstract class ProviderView : StackPanel, IDisposable
 internal sealed class WeatherView : ProviderView
 {
     private readonly Dashboard dashboard;
-    public WeatherView(Dashboard dashboard) : base("Weather")
+    public WeatherView(Dashboard dashboard) : base("LOCAL FORECAST")
     {
         this.dashboard = dashboard;
         var refresh = new Button { Content = "Refresh weather", IsEnabled = dashboard.Settings.WeatherEnabled };
@@ -80,16 +80,16 @@ internal sealed class SpotifyView : ProviderView
 {
     private readonly Dashboard dashboard;
     private readonly MediaSession media = new();
-    private readonly Button previous = new() { Content = "Previous", IsEnabled = false };
+    private readonly Button previous = new() { Content = "◀", IsEnabled = false };
     private readonly Button toggle = new() { Content = "Play / pause", IsEnabled = false };
-    private readonly Button next = new() { Content = "Next", IsEnabled = false };
+    private readonly Button next = new() { Content = "▶", IsEnabled = false };
     private readonly Button shuffle = new() { Content = "Shuffle", IsEnabled = false };
     private readonly Button repeat = new() { Content = "Repeat", IsEnabled = false };
-    private readonly Image artwork = new() { Height = 56, Width = 56, Stretch = Stretch.UniformToFill, HorizontalAlignment = HorizontalAlignment.Left, Visibility = Visibility.Collapsed };
+    private readonly Image artwork = new() { Height = 96, Width = 96, Stretch = Stretch.UniformToFill, HorizontalAlignment = HorizontalAlignment.Left, Visibility = Visibility.Collapsed };
     private byte[]? shownArtwork;
-    private readonly Slider seek = new() { Minimum = 0, Maximum = 1, IsEnabled = false, Margin = new Thickness(4) };
+    private readonly SeekRail seek = new() { Minimum = 0, Maximum = 1, IsEnabled = false, Margin = new Thickness(4) };
     private bool seeking;
-    public SpotifyView(Dashboard dashboard) : base("Spotify")
+    public SpotifyView(Dashboard dashboard) : base("NOW PLAYING")
     {
         this.dashboard = dashboard;
         var buttons = new WrapPanel(); buttons.Children.Add(previous); buttons.Children.Add(toggle); buttons.Children.Add(next);
@@ -178,7 +178,7 @@ internal sealed class AiView : ProviderView
     private readonly Button send = new() { Content = "Send" };
     private readonly Button clear = new() { Content = "Clear" };
     private CancellationTokenSource? request;
-    public AiView(Dashboard dashboard, string id) : base("AI chat")
+    public AiView(Dashboard dashboard, string id) : base("CONVERSATION")
     {
         this.dashboard = dashboard; this.id = id;
         dashboard.Chats.TryAdd(id, []);

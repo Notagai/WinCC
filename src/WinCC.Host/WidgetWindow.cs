@@ -12,7 +12,6 @@ using Microsoft.Win32;
 using WinCC.DesktopInterop;
 using WinCC.Layout;
 using Geometry = WinCC.Layout.Geometry;
-using Calendar = System.Windows.Controls.Calendar;
 
 namespace WinCC.Host;
 
@@ -32,7 +31,6 @@ internal sealed class WidgetWindow : Window, IDisposable
     private Thumb? activeThumb;
     private Widget? gestureStart;
     private Point pointerStart;
-    private DateTime calendarMonth = DateTime.Today;
     private bool expanded;
     private ProviderView? provider;
     private readonly List<double> cpuHistory = [];
@@ -55,7 +53,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         AllowsTransparency = !dashboard.Windowed;
         Background = Brushes.Transparent;
         Topmost = false;
-        card = new LiquidGlass { Child = new Border { Padding = new Thickness(20), Child = grid } };
+        card = new LiquidGlass { Material = widget.Type, Child = new Border { Padding = new Thickness(20), Child = grid } };
         Content = card;
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -203,13 +201,13 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             case "clock":
                 var clock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-                live.FontSize = 30; clock.Children.Add(live); body.Children.Add(Scrollable(clock)); break;
+                live.FontSize = 42; clock.Children.Add(live); body.Children.Add(Scrollable(clock)); break;
             case "calendar":
                 BuildCalendar(body); break;
             case "notes":
                 BuildNotes(body); break;
             case "system":
-                var metrics = new StackPanel(); metrics.Children.Add(Label("SYSTEM", 13));
+                var metrics = new StackPanel(); metrics.Children.Add(Label("PERFORMANCE / LIVE", 13));
                 live.FontSize = 17; metrics.Children.Add(live);
                 graph.Children.Add(cpuLine); graph.Children.Add(memoryLine);
                 graph.SizeChanged += (_, _) => DrawGraph(); metrics.Children.Add(graph);
@@ -221,7 +219,7 @@ internal sealed class WidgetWindow : Window, IDisposable
                 provider = new WeatherView(dashboard); body.Children.Add(Scrollable(provider)); break;
             case "ai-island":
                 var island = new StackPanel();
-                var open = new Button { Content = expanded ? "✦  Close AI panel" : "✦  Open AI panel" };
+                var open = new Button { Content = expanded ? "✦   Close conversation" : "✦   Ask anything" };
                 open.Click += (_, _) => { expanded = !expanded; RebuildBody(); ApplyPlacement(); };
                 island.Children.Add(open);
                 if (expanded)
@@ -239,24 +237,13 @@ internal sealed class WidgetWindow : Window, IDisposable
     }
     private void BuildCalendar(Grid body)
     {
-        var calendar = new Calendar
-        {
-            DisplayDate = calendarMonth, SelectedDate = DateTime.Today,
-            HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Top,
-            Language = System.Windows.Markup.XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag)
-        };
-        calendar.Foreground = Brushes.Black;
-        calendar.Background = Brushes.WhiteSmoke;
-        var calendarText = new Style(typeof(TextBlock));
-        calendarText.Setters.Add(new Setter(TextBlock.ForegroundProperty, Brushes.Black));
-        calendar.Resources.Add(typeof(TextBlock), calendarText);
-        calendar.DisplayDateChanged += (_, _) => calendarMonth = calendar.DisplayDate;
-        var panel = new StackPanel(); panel.Children.Add(Label("CALENDAR · LOCAL", 13)); panel.Children.Add(calendar);
-        panel.Children.Add(Label("No cloud calendar connected.", 12)); body.Children.Add(Scrollable(panel));
+        body.Children.Add(Scrollable(new MonthView()));
     }
     private void BuildNotes(Grid body)
     {
         var panel = new DockPanel();
+        var heading = Label("PERSONAL NOTES", 13); heading.Foreground = Brushes.Wheat;
+        DockPanel.SetDock(heading, Dock.Top); panel.Children.Add(heading);
         noteStatus = Label("Saved locally", 12); DockPanel.SetDock(noteStatus, Dock.Bottom); panel.Children.Add(noteStatus);
         var tools = new WrapPanel(); DockPanel.SetDock(tools, Dock.Bottom); panel.Children.Add(tools);
         var retry = new Button { Content = "Save now", Padding = new Thickness(8, 4, 8, 4), FontSize = 12 }; retry.Click += (_, _) => FlushNote(); tools.Children.Add(retry);

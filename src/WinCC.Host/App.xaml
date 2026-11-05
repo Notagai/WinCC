@@ -41,6 +41,20 @@
       <Setter Property="Background" Value="#E6101A2B" />
       <Setter Property="Foreground" Value="#EDF2FF" />
       <Setter Property="CaretBrush" Value="White" />
+      <Setter Property="SelectionBrush" Value="#806F9AE8" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TextBox">
+            <Border x:Name="InputSurface" Background="{TemplateBinding Background}" CornerRadius="12" BorderBrush="#38FFFFFF" BorderThickness="1" Padding="{TemplateBinding Padding}">
+              <ScrollViewer x:Name="PART_ContentHost" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="InputSurface" Property="BorderBrush" Value="#AAC6FF" /></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter TargetName="InputSurface" Property="Opacity" Value="0.5" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
       <Setter Property="Padding" Value="8" />
     </Style>
     <Style TargetType="ComboBox"><Setter Property="Foreground" Value="#142039" /><Setter Property="Background" Value="#F1F5FF" /><Setter Property="Margin" Value="3" /><Setter Property="MinWidth" Value="100" /></Style>
