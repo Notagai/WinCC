@@ -22,7 +22,7 @@ internal abstract class ProviderView : StackPanel, IDisposable
     protected readonly DispatcherTimer Timer = new();
     protected ProviderView(string title)
     {
-        Children.Add(new TextBlock { Text = title, FontSize = 19, FontWeight = FontWeights.SemiBold });
+        Children.Add(new TextBlock { Text = title, FontSize = 11, FontWeight = FontWeights.SemiBold, Opacity = .7 });
         Children.Add(State);
     }
     protected void Failure(Exception error)
@@ -47,14 +47,16 @@ internal abstract class ProviderView : StackPanel, IDisposable
 
 internal sealed class WeatherView : ProviderView
 {
+    private readonly TextBlock temperature = new() { Text = "—", FontSize = 42, Margin = new Thickness(0, 8, 0, 2) };
     private readonly Dashboard dashboard;
-    public WeatherView(Dashboard dashboard) : base("LOCAL FORECAST")
+    public WeatherView(Dashboard dashboard) : base("Weather")
     {
         this.dashboard = dashboard;
-        var refresh = new Button { Content = "Refresh weather", IsEnabled = dashboard.Settings.WeatherEnabled };
+        Children.Insert(1, temperature);
+        var refresh = new Button { Content = "Refresh", Visibility = dashboard.Settings.WeatherEnabled ? Visibility.Visible : Visibility.Collapsed };
         refresh.Click += async (_, _) => await Refresh(); Children.Add(refresh);
         Children.Add(new TextBlock { Text = "Weather data: Open-Meteo.com · CC BY 4.0", FontSize = 11, TextWrapping = TextWrapping.Wrap });
-        if (!dashboard.Settings.WeatherEnabled) State.Text = "Not connected. Enable weather and choose coordinates in the Command Center.";
+        if (!dashboard.Settings.WeatherEnabled) State.Text = "Choose a location";
         Timer.Interval = TimeSpan.FromMinutes(15);
         Timer.Tick += async (_, _) => { if (VisibleForPolling) await Refresh(); };
         Loaded += async (_, _) => { if (dashboard.Settings.WeatherEnabled) { await Refresh(); if (!Disposed) Timer.Start(); } };
@@ -68,7 +70,8 @@ internal sealed class WeatherView : ProviderView
             var s = dashboard.Settings;
             var reading = await new WeatherClient(dashboard.Http).Fetch(s.Latitude, s.Longitude, s.Fahrenheit, Lifetime.Token);
             if (Disposed) return;
-            State.Text = $"{reading.Temperature:F1}{reading.Unit} · {reading.Conditions}\nObserved {reading.ObservedAt}\n" +
+            temperature.Text = $"{reading.Temperature:F0}{reading.Unit}";
+            State.Text = $"{reading.Conditions}\n" +
                 string.Join("\n", reading.Forecast.Select(d => $"{d.Date}: {d.Minimum:F0}–{d.Maximum:F0}{reading.Unit}"));
         }
         catch (Exception e) when (Expected(e)) { if (!Disposed) Failure(e); }
@@ -89,13 +92,14 @@ internal sealed class SpotifyView : ProviderView
     private byte[]? shownArtwork;
     private readonly SeekRail seek = new() { Minimum = 0, Maximum = 1, IsEnabled = false, Margin = new Thickness(4) };
     private bool seeking;
-    public SpotifyView(Dashboard dashboard) : base("NOW PLAYING")
+    public SpotifyView(Dashboard dashboard) : base("Music")
     {
         this.dashboard = dashboard;
         var buttons = new WrapPanel(); buttons.Children.Add(previous); buttons.Children.Add(toggle); buttons.Children.Add(next);
         Children.Insert(1, artwork);
+        buttons.Visibility = seek.Visibility = dashboard.Settings.SpotifyEnabled ? Visibility.Visible : Visibility.Collapsed;
         Children.Add(buttons); Children.Add(seek);
-        var modes = new WrapPanel(); modes.Children.Add(shuffle); modes.Children.Add(repeat); Children.Add(modes);
+        var modes = new WrapPanel(); modes.Children.Add(shuffle); modes.Children.Add(repeat); modes.Visibility = dashboard.Settings.SpotifyEnabled ? Visibility.Visible : Visibility.Collapsed; Children.Add(modes);
         System.Windows.Automation.AutomationProperties.SetName(seek, "Playback position");
         previous.Click += async (_, _) => await Control(media.Previous);
         toggle.Click += async (_, _) => await Control(media.Toggle);
@@ -106,7 +110,8 @@ internal sealed class SpotifyView : ProviderView
         seek.PreviewMouseLeftButtonUp += async (_, _) => { seeking = false; await Control(() => media.Seek(seek.Value)); };
         seek.LostMouseCapture += (_, _) => seeking = false;
         seek.KeyUp += async (_, e) => { if (e.Key is Key.Left or Key.Right or Key.Home or Key.End) await Control(() => media.Seek(seek.Value)); };
-        State.Text = dashboard.Settings.SpotifyEnabled ? "Connecting local media session…" : "Disconnected. Enable local Spotify access in the Command Center.";
+        State.FontSize = 18; State.Margin = new Thickness(0, 10, 0, 12);
+        State.Text = dashboard.Settings.SpotifyEnabled ? "Connecting local media session…" : "Nothing playing";
         Timer.Interval = TimeSpan.FromSeconds(2);
         Timer.Tick += async (_, _) => { if (VisibleForPolling && !seeking) await Refresh(); };
         Loaded += async (_, _) => { if (dashboard.Settings.SpotifyEnabled) { await Refresh(); if (!Disposed) Timer.Start(); } };
@@ -132,7 +137,7 @@ internal sealed class SpotifyView : ProviderView
             if (Disposed) return;
             if (reading is null)
             {
-                State.Text = "No active Spotify session. Open Spotify and start playback.";
+                State.Text = "Nothing playing";
                 previous.IsEnabled = toggle.IsEnabled = next.IsEnabled = seek.IsEnabled = shuffle.IsEnabled = repeat.IsEnabled = false;
                 artwork.Source = null; artwork.Visibility = Visibility.Collapsed; shownArtwork = null;
                 return;
@@ -178,7 +183,7 @@ internal sealed class AiView : ProviderView
     private readonly Button send = new() { Content = "Send" };
     private readonly Button clear = new() { Content = "Clear" };
     private CancellationTokenSource? request;
-    public AiView(Dashboard dashboard, string id) : base("CONVERSATION")
+    public AiView(Dashboard dashboard, string id) : base("Conversation")
     {
         this.dashboard = dashboard; this.id = id;
         dashboard.Chats.TryAdd(id, []);
@@ -198,7 +203,7 @@ internal sealed class AiView : ProviderView
         };
         bool connected = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("WINCC_AI_API_KEY"));
         State.Text = connected ? "Messages are sent to OpenAI when you choose Send. Chat is kept in memory only." :
-            "Disconnected. Set WINCC_AI_API_KEY before starting WinCC; no key is saved by this app.";
+            "Connect AI in Command Center to start a conversation.";
         send.IsEnabled = connected;
         System.Windows.Automation.AutomationProperties.SetName(prompt, "AI chat message");
         RefreshHistory();

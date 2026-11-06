@@ -85,6 +85,9 @@ internal sealed class CommandCenter : Window
         fonts.Children.Add(interfaceSize); fonts.Children.Add(widgetSize);
         AddButton(fonts, "Apply text size", () => dashboard.ChangeFontSizes((double)interfaceSize.SelectedItem, (double)widgetSize.SelectedItem));
         AddButton(fonts, "Reset text size", () => dashboard.ChangeFontSizes(18, 18));
+        var typefaces = new WrapPanel(); content.Children.Add(typefaces);
+        AddButton(typefaces, "Lato · Clean", () => dashboard.ChangeFontFamily("Lato"));
+        AddButton(typefaces, "VT323 · Retro", () => dashboard.ChangeFontFamily("VT323"));
         Heading("Optional connections");
         Paragraph("Weather sends the coordinates you enter to Open-Meteo (15-minute refresh). Spotify reads your local Windows media session. AI sends only the conversation you submit to OpenAI; API usage may incur charges.");
         var weather = new CheckBox { Content = "Connect weather · Open-Meteo", IsChecked = dashboard.Settings.WeatherEnabled, Margin = new Thickness(3) };
@@ -124,7 +127,7 @@ internal sealed class CommandCenter : Window
             foreach (var spec in WidgetCatalog.All)
                 AddButton(catalog, "+ " + spec.Name, () => dashboard.Add(spec.Type, (string)targets.SelectedValue));
             var presets = new WrapPanel(); content.Children.Add(presets);
-            AddButton(presets, "Winter Glass preset", dashboard.Preset);
+            AddButton(presets, "Compact desktop preset", dashboard.Preset);
             AddButton(presets, "Reset to blank", () =>
             {
                 if (MessageBox.Show(this, "Remove all widgets from the draft? Undo or Cancel can restore them. Notes files are kept.",

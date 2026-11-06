@@ -4,6 +4,10 @@
 
 > The accompanying [layout diagram](../design/dashboard-layout.svg) is a **vector schematic** committed to GitHub so agents have a repository-local visual reference. It is not a pixel-perfect copy of the generated screenshot or the user's wallpaper.
 
+## Latest owner direction: aesthetics first
+
+The owner supplied a macOS desktop reference and explicitly prioritized aesthetics. The current candidate uses compact proportions, clean Lato typography, differentiated material surfaces and restrained controls. VT323 stays available as an optional retro font. The old screenshot's oversized dark panels are not the target. Setup instructions belong in Command Center; inactive widgets show calm, short states. The optional Compact desktop preset is a user-triggered draft operation, not a forced layout. Rendering remains app-owned, without system backdrop effects. Actual Windows visual review is still required.
+
 ## Core composition: freeform canvas, not fixed columns
 
 **The owner clarified that WinCC must be a blank, freeform widget canvas.** Widgets can be added, moved, resized, removed, and reordered **only in Edit Mode**; Normal Mode locks geometry while keeping widget controls and editable notes functional. See **[CANVAS-EDITOR.md](CANVAS-EDITOR.md)** for the normative behavior.

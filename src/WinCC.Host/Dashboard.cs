@@ -13,6 +13,7 @@ public sealed class UserSettings
 {
     public double InterfaceFontSize { get; set; } = 18;
     public double WidgetFontSize { get; set; } = 18;
+    public string FontFamily { get; set; } = "Lato";
     public string Theme { get; set; } = "Winter Glass";
     public List<string> Launchers { get; set; } = [];
     public bool WeatherEnabled { get; set; }
@@ -69,6 +70,7 @@ internal sealed class Dashboard : IDisposable
             Settings = new(); settingsWritable = false;
             Status = "Settings could not be read; original preserved. Settings changes are disabled.";
         }
+        ApplyFont();
         RefreshMonitors();
         Center = new(this);
         lifecycle.Tick += (_, _) => CheckLifecycle();
@@ -169,19 +171,29 @@ internal sealed class Dashboard : IDisposable
         Editor.Change(d =>
         {
             d.Active.Widgets.Clear();
-            double leftY = 20, rightY = 20;
+            double leftY = 24, rightY = 24;
             foreach (var type in types)
             {
                 var s = WidgetCatalog.Get(type);
                 if (m.WidthDip < s.MinWidth || m.HeightDip < s.MinHeight) continue;
                 bool left = type is "clock" or "calendar" or "spotify";
-                double x = type == "ai-island" ? (m.WidthDip - s.Width) / 2 : left ? 20 : m.WidthDip - s.Width - 20;
+                double x = type == "ai-island" ? (m.WidthDip - s.Width) / 2 : left ? 24 : m.WidthDip - s.Width - 24;
                 double y = type == "ai-island" ? 20 : left ? leftY : rightY;
                 var r = Geometry.Clamp(new(x, y, s.Width, s.Height), s, m);
                 d.Active.Widgets.Add(new(Guid.NewGuid().ToString("N"), type, m.Key, r, d.Active.Widgets.Count, []));
-                if (left) leftY += s.Height + 16; else rightY += s.Height + 16;
+                if (left) leftY += s.Height + 14; else rightY += s.Height + 14;
             }
         }); Render();
+    }
+    private void ApplyFont() => Application.Current.Resources["DesktopFont"] =
+        new System.Windows.Media.FontFamily("/WinCC;component/Assets/Fonts/#" + (Settings.FontFamily == "VT323" ? "VT323" : "Lato"));
+    public void ChangeFontFamily(string family)
+    {
+        if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
+        if (family is not ("Lato" or "VT323")) throw new InvalidOperationException("Unknown font.");
+        string previous = Settings.FontFamily; Settings.FontFamily = family;
+        try { SaveSettings(); } catch { Settings.FontFamily = previous; throw; }
+        ApplyFont(); Render();
     }
     public void ChangeFontSizes(double interfaceSize, double widgetSize)
     {

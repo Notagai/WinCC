@@ -85,3 +85,9 @@ Under Appearance, choose separate interface and widget font sizes (12–32), the
 ## Custom widget interfaces
 
 The calendar month grid and keyboard/mouse seek rail are implemented by WinCC (MonthView and SeekRail), replacing the platform calendar/slider visuals. Each widget has its own accent material and content composition: oversized clock, purple date navigator, warm notes workspace, cyan performance panel, green music player, blue forecast and violet conversation island. Text editing uses an app-defined input template over WPF text-editing primitives. Native file pickers remain for choosing/exporting user files. Windows UI visual acceptance is still pending.
+
+## Desktop aesthetic revision
+
+The macOS desktop reference guides compact, content-first compositions: clean Lato typography, pale calendar and notes surfaces, a blue forecast card, dark artwork-led music, paired performance readings and a narrow AI pill. VT323 remains available under Appearance → VT323 · Retro. Existing layouts and text sizes are preserved; choose Lato · Clean, then enter Edit Dashboard and apply Compact desktop preset to deliberately replace the oversized earlier arrangement. Undo/Cancel can restore it. The preset is optional and never imposed at startup.
+
+This pass uses custom app-drawn materials, not native system backdrop APIs. It does not claim live wallpaper refraction. Visual acceptance on Windows remains pending.

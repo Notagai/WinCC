@@ -1,6 +1,6 @@
 # Google Fonts typography
 
-WinCC defaults to VT323 Regular, bundled for offline WPF rendering. Lato Regular and Bold remain bundled as alternative assets.
+WinCC defaults to Lato Regular/Bold for a clean desktop appearance. VT323 Regular remains bundled as an optional retro typeface. Both render offline.
 
 - Google Fonts: https://fonts.google.com/specimen/Lato
 - Google Fonts stylesheet link: https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap

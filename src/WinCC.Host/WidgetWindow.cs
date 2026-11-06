@@ -25,6 +25,9 @@ internal sealed class WidgetWindow : Window, IDisposable
     private readonly DispatcherTimer noteSave = new() { Interval = TimeSpan.FromMilliseconds(600) };
     private readonly SystemSampler sampler = new();
     private readonly TextBlock live = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
+    private readonly TextBlock dateLine = new() { FontSize = 13, Foreground = Brushes.WhiteSmoke, Margin = new Thickness(2, 8, 0, 0) };
+    private readonly TextBlock cpuValue = new() { FontSize = 25 };
+    private readonly TextBlock ramValue = new() { FontSize = 25 };
     private TextBox? note;
     private TextBlock? noteStatus;
     private bool noteDirty, disposed, placing;
@@ -53,7 +56,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         AllowsTransparency = !dashboard.Windowed;
         Background = Brushes.Transparent;
         Topmost = false;
-        card = new LiquidGlass { Material = widget.Type, Child = new Border { Padding = new Thickness(20), Child = grid } };
+        card = new LiquidGlass { Material = widget.Type, Child = new Border { Padding = new Thickness(widget.Type == "ai-island" ? 10 : 18), Child = grid } };
         Content = card;
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -100,6 +103,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             var m = Monitor;
             var r = Geometry.Clamp(widget.RectDip, WidgetCatalog.Get(widget.Type), m);
+            if (dashboard.Editor.IsEditing && widget.Type == "ai-island") r = r with { Height = Math.Max(160, r.Height) };
             if (expanded)
                 r = Geometry.Clamp(r with { Width = Math.Max(460, r.Width), Height = Math.Max(520, r.Height) }, WidgetCatalog.Get(widget.Type), m);
             var p = Geometry.ToPhysical(r, m);
@@ -201,17 +205,20 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             case "clock":
                 var clock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-                live.FontSize = 42; clock.Children.Add(live); body.Children.Add(Scrollable(clock)); break;
+                live.FontSize = 44; live.FontWeight = FontWeights.Light; clock.Children.Add(live); clock.Children.Add(dateLine); body.Children.Add(Scrollable(clock)); break;
             case "calendar":
                 BuildCalendar(body); break;
             case "notes":
                 BuildNotes(body); break;
             case "system":
-                var metrics = new StackPanel(); metrics.Children.Add(Label("PERFORMANCE / LIVE", 13));
-                live.FontSize = 17; metrics.Children.Add(live);
+                var metrics = new StackPanel();
+                var readings = new Grid(); readings.ColumnDefinitions.Add(new()); readings.ColumnDefinitions.Add(new());
+                var cpu = new StackPanel(); cpu.Children.Add(Label("CPU", 10)); cpu.Children.Add(cpuValue);
+                var ram = new StackPanel(); ram.Children.Add(Label("Memory", 10)); ram.Children.Add(ramValue);
+                Grid.SetColumn(ram, 1); readings.Children.Add(cpu); readings.Children.Add(ram); metrics.Children.Add(readings);
                 graph.Children.Add(cpuLine); graph.Children.Add(memoryLine);
                 graph.SizeChanged += (_, _) => DrawGraph(); metrics.Children.Add(graph);
-                metrics.Children.Add(Label("Last 60 visible samples · CPU blue / RAM lavender", 11));
+
                 body.Children.Add(Scrollable(metrics)); break;
             case "spotify":
                 provider = new SpotifyView(dashboard); body.Children.Add(Scrollable(provider)); break;
@@ -242,17 +249,17 @@ internal sealed class WidgetWindow : Window, IDisposable
     private void BuildNotes(Grid body)
     {
         var panel = new DockPanel();
-        var heading = Label("PERSONAL NOTES", 13); heading.Foreground = Brushes.Wheat;
+        var heading = Label("Notes", 18); heading.Foreground = new SolidColorBrush(Color.FromRgb(75, 58, 33));
         DockPanel.SetDock(heading, Dock.Top); panel.Children.Add(heading);
-        noteStatus = Label("Saved locally", 12); DockPanel.SetDock(noteStatus, Dock.Bottom); panel.Children.Add(noteStatus);
+        noteStatus = Label("Saved", 10); noteStatus.Foreground = Brushes.SaddleBrown; DockPanel.SetDock(noteStatus, Dock.Bottom); panel.Children.Add(noteStatus);
         var tools = new WrapPanel(); DockPanel.SetDock(tools, Dock.Bottom); panel.Children.Add(tools);
-        var retry = new Button { Content = "Save now", Padding = new Thickness(8, 4, 8, 4), FontSize = 12 }; retry.Click += (_, _) => FlushNote(); tools.Children.Add(retry);
-        var export = new Button { Content = "Export", Padding = new Thickness(8, 4, 8, 4), FontSize = 12 }; tools.Children.Add(export);
+        var retry = new Button { Content = new TextBlock { Text = "Save", Foreground = Brushes.SaddleBrown }, Background = new SolidColorBrush(Color.FromArgb(20, 100, 70, 30)), Padding = new Thickness(8, 4, 8, 4), FontSize = 12 }; retry.Click += (_, _) => FlushNote(); tools.Children.Add(retry);
+        var export = new Button { Content = new TextBlock { Text = "Export", Foreground = Brushes.SaddleBrown }, Background = new SolidColorBrush(Color.FromArgb(20, 100, 70, 30)), Padding = new Thickness(8, 4, 8, 4), FontSize = 12 }; tools.Children.Add(export);
         note = new TextBox
         {
             AcceptsReturn = true, AcceptsTab = true, TextWrapping = TextWrapping.Wrap,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxLength = NotesStore.MaxCharacters,
-            BorderThickness = new Thickness(0), FontSize = 15
+            BorderThickness = new Thickness(0), FontSize = 14, Background = Brushes.Transparent, Foreground = new SolidColorBrush(Color.FromRgb(56, 49, 38)), CaretBrush = Brushes.Black
         };
         System.Windows.Automation.AutomationProperties.SetName(note, "Editable note");
         try { note.Text = dashboard.Notes.Load(widget.Id); }
@@ -272,7 +279,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         try
         {
             dashboard.Notes.Save(widget.Id, note.Text); noteDirty = false;
-            if (noteStatus is not null) noteStatus.Text = "Saved locally";
+            if (noteStatus is not null) noteStatus.Text = "Saved";
             return true;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
@@ -288,16 +295,17 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             string format = widget.Settings.GetValueOrDefault("hourFormat", "system") switch
             { "12" => "h:mm tt", "24" => "HH:mm", _ => "t" };
-            live.Text = DateTime.Now.ToString(format, CultureInfo.CurrentCulture) + "\n" + DateTime.Today.ToString("ddd, d MMM", CultureInfo.CurrentCulture);
+            live.Text = DateTime.Now.ToString(format, CultureInfo.CurrentCulture);
+            dateLine.Text = DateTime.Today.ToString("dddd, MMMM d", CultureInfo.CurrentCulture);
         }
         else if (widget.Type == "system")
         {
             var sample = sampler.Sample();
             string cpu = sample.CpuPercent is double value ? $"{value:F1}%" : "unavailable";
-            string ram = sample.UsedMemory is ulong used && sample.TotalMemory is ulong total ?
-                $"{used / 1073741824d:F1} / {total / 1073741824d:F1} GiB" : "unavailable";
-            live.Text = $"CPU   {cpu}\nRAM   {ram}\nGPU   unavailable\nTemperature   unavailable";
-            if (sample.CpuPercent is double cpuValue) cpuHistory.Add(cpuValue);
+
+            cpuValue.Text = cpu;
+            ramValue.Text = sample.UsedMemory is ulong memory ? $"{memory / 1073741824d:F1} GB" : "—";
+            if (sample.CpuPercent is double cpuReading) cpuHistory.Add(cpuReading);
             if (sample.UsedMemory is ulong usedMemory && sample.TotalMemory is ulong totalMemory && totalMemory > 0)
                 memoryHistory.Add(100d * usedMemory / totalMemory);
             if (cpuHistory.Count > 60) cpuHistory.RemoveAt(0);

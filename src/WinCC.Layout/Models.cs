@@ -21,13 +21,13 @@ public static class WidgetCatalog
 {
     public static IReadOnlyList<WidgetSpec> All { get; } = Array.AsReadOnly(new WidgetSpec[]
     {
-        new("clock", "Clock", 220, 150, 300, 180),
-        new("calendar", "Calendar", 280, 320, 320, 370),
-        new("notes", "Notes", 240, 200, 320, 300),
-        new("system", "System", 240, 180, 300, 220),
-        new("spotify", "Spotify", 260, 160, 320, 180),
-        new("weather", "Weather", 240, 160, 300, 190),
-        new("ai-island", "AI Island", 300, 100, 380, 130)
+        new("clock", "Clock", 200, 120, 280, 150),
+        new("calendar", "Calendar", 240, 260, 280, 300),
+        new("notes", "Notes", 220, 180, 280, 230),
+        new("system", "System", 220, 150, 280, 170),
+        new("spotify", "Spotify", 240, 150, 280, 190),
+        new("weather", "Weather", 220, 150, 280, 170),
+        new("ai-island", "AI Island", 240, 72, 300, 72)
     });
     public static WidgetSpec Get(string type) => All.SingleOrDefault(s => s.Type == type)
         ?? throw new InvalidDataException("Unknown widget type.");

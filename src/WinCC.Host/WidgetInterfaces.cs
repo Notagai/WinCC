@@ -10,7 +10,16 @@ internal sealed class MonthView : StackPanel
 {
     private DateTime month = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     private DateTime selected = DateTime.Today;
-    public MonthView() => Draw();
+    public MonthView()
+    {
+        var textStyle = new Style(typeof(TextBlock), (Style)Application.Current.FindResource(typeof(TextBlock)));
+        textStyle.Setters.Add(new Setter(TextBlock.ForegroundProperty, new SolidColorBrush(Color.FromRgb(38, 40, 46))));
+        Resources.Add(typeof(TextBlock), textStyle);
+        var buttonStyle = new Style(typeof(Button), (Style)Application.Current.FindResource(typeof(Button)));
+        buttonStyle.Setters.Add(new Setter(Control.ForegroundProperty, new SolidColorBrush(Color.FromRgb(38, 40, 46))));
+        Resources.Add(typeof(Button), buttonStyle);
+        Draw();
+    }
     private void Draw()
     {
         Children.Clear();
@@ -21,29 +30,29 @@ internal sealed class MonthView : StackPanel
         next.Click += (_, _) => { month = month.AddMonths(1); Draw(); };
         DockPanel.SetDock(back, Dock.Left); DockPanel.SetDock(next, Dock.Right);
         navigation.Children.Add(back); navigation.Children.Add(next);
-        navigation.Children.Add(new TextBlock { Text = month.ToString("MMMM yyyy"), FontSize = 22, VerticalAlignment = VerticalAlignment.Center, TextAlignment = TextAlignment.Center });
+        navigation.Children.Add(new TextBlock { Text = month.ToString("MMMM yyyy"), FontSize = 16, VerticalAlignment = VerticalAlignment.Center, TextAlignment = TextAlignment.Center });
         Children.Add(navigation);
         var days = new System.Windows.Controls.Primitives.UniformGrid { Columns = 7, Margin = new Thickness(0, 12, 0, 8) };
         var culture = CultureInfo.CurrentCulture.DateTimeFormat;
         int first = (int)culture.FirstDayOfWeek;
-        for (int i = 0; i < 7; i++) days.Children.Add(new TextBlock { Text = culture.AbbreviatedDayNames[(first + i) % 7], TextAlignment = TextAlignment.Center, Foreground = Brushes.LightSteelBlue });
+        for (int i = 0; i < 7; i++) days.Children.Add(new TextBlock { Text = culture.AbbreviatedDayNames[(first + i) % 7], TextAlignment = TextAlignment.Center, Foreground = Brushes.SlateGray });
         int offset = ((int)month.DayOfWeek - first + 7) % 7;
-        for (int i = 0; i < 42; i++)
+        for (int i = 0; i < ((offset + DateTime.DaysInMonth(month.Year, month.Month) + 6) / 7) * 7; i++)
         {
             var date = month.AddDays(i - offset);
             bool current = date.Month == month.Month;
             var button = new Button
             {
-                Content = date.Day.ToString(), MinHeight = 32, Padding = new Thickness(2), Margin = new Thickness(2),
+                Content = new TextBlock { Text = date.Day.ToString(), Foreground = new SolidColorBrush(Color.FromRgb(38, 40, 46)), TextAlignment = TextAlignment.Center }, MinHeight = 28, Padding = new Thickness(2), Margin = new Thickness(2),
                 Opacity = current ? 1 : .35,
-                Background = date == selected ? new SolidColorBrush(Color.FromRgb(102, 79, 166)) : date == DateTime.Today ? new SolidColorBrush(Color.FromRgb(46, 74, 109)) : Brushes.Transparent,
+                Background = date == selected ? new SolidColorBrush(Color.FromRgb(240, 102, 86)) : date == DateTime.Today ? new SolidColorBrush(Color.FromRgb(235, 219, 207)) : Brushes.Transparent,
                 ToolTip = date.ToString("D")
             };
             button.Click += (_, _) => { selected = date; month = new(date.Year, date.Month, 1); Draw(); };
             days.Children.Add(button);
         }
         Children.Add(days);
-        Children.Add(new TextBlock { Text = selected.ToString("dddd, MMMM d"), FontSize = 17, TextAlignment = TextAlignment.Center });
+
     }
 }
 
