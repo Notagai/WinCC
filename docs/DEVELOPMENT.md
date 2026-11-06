@@ -91,3 +91,9 @@ The calendar month grid and keyboard/mouse seek rail are implemented by WinCC (M
 The macOS desktop reference guides compact, content-first compositions: clean Lato typography, pale calendar and notes surfaces, a blue forecast card, dark artwork-led music, paired performance readings and a narrow AI pill. VT323 remains available under Appearance → VT323 · Retro. Existing layouts and text sizes are preserved; choose Lato · Clean, then enter Edit Dashboard and apply Compact desktop preset to deliberately replace the oversized earlier arrangement. Undo/Cancel can restore it. The preset is optional and never imposed at startup.
 
 This pass uses custom app-drawn materials, not native system backdrop APIs. It does not claim live wallpaper refraction. Visual acceptance on Windows remains pending.
+
+## Proportional widget sizing
+
+Each widget now has a composition viewport. Saved bounds are still monitor-local DIPs, but content is measured in design units, then uniformly scaled to the live widget size. Doubling both dimensions doubles text, spacing, icons, artwork, graphs, controls and padding. Changing the aspect ratio gives the longer axis extra layout space; text and artwork are never stretched. Editing and pointer coordinates remain in the host's original coordinate system, and WPF transforms content hit targets with the visuals. The AI panel switches its design reference when expanded. Font-size preferences are an additional user adjustment, not a substitute for resizing. Surface corner radii are proportional to widget size.
+
+The viewport defines sizing behavior, not proof of design quality. Windows rendering, pointer interaction and visual composition at minimum/default/large bounds still require visual acceptance.

@@ -20,6 +20,7 @@ internal sealed class WidgetWindow : Window, IDisposable
     private readonly Dashboard dashboard;
     private Widget widget;
     private readonly LiquidGlass card;
+    private readonly WidgetViewport viewport;
     private readonly Grid grid = new();
     private readonly DispatcherTimer tick = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly DispatcherTimer noteSave = new() { Interval = TimeSpan.FromMilliseconds(600) };
@@ -56,7 +57,12 @@ internal sealed class WidgetWindow : Window, IDisposable
         AllowsTransparency = !dashboard.Windowed;
         Background = Brushes.Transparent;
         Topmost = false;
-        card = new LiquidGlass { Material = widget.Type, Child = new Border { Padding = new Thickness(widget.Type == "ai-island" ? 10 : 18), Child = grid } };
+        var composition = WidgetCatalog.Get(widget.Type);
+        viewport = new WidgetViewport(composition.Width, composition.Height)
+        {
+            Child = new Border { Padding = new Thickness(widget.Type == "ai-island" ? 10 : 18), Child = grid }
+        };
+        card = new LiquidGlass { Material = widget.Type, Child = viewport };
         Content = card;
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -240,6 +246,8 @@ internal sealed class WidgetWindow : Window, IDisposable
     private void RebuildBody()
     {
         provider?.Dispose(); provider = null;
+        var composition = WidgetCatalog.Get(widget.Type);
+        viewport.SetReference(expanded ? 460 : composition.Width, expanded ? 520 : composition.Height);
         var body = grid.Children.OfType<Grid>().Single(); body.Children.Clear(); BuildContent(body);
     }
     private void BuildCalendar(Grid body)

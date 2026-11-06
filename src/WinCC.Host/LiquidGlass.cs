@@ -25,9 +25,10 @@ internal sealed class LiquidGlass : Decorator
             case "clock": top = Color.FromArgb(110, 32, 51, 68); bottom = Color.FromArgb(145, 22, 35, 48); break;
             default: top = Color.FromArgb(225, 40, 51, 65); bottom = Color.FromArgb(240, 25, 33, 46); break;
         }
+        double radius = Math.Min(ActualWidth, ActualHeight) * .10;
         dc.DrawRoundedRectangle(new LinearGradientBrush(top, bottom, 90),
-            new Pen(new SolidColorBrush(Color.FromArgb(45, 255, 255, 255)), 1), rect, 22, 22);
+            new Pen(new SolidColorBrush(Color.FromArgb(45, 255, 255, 255)), 1), rect, radius, radius);
         var sheen = new LinearGradientBrush(Color.FromArgb(28, 255, 255, 255), Colors.Transparent, 90);
-        dc.DrawRoundedRectangle(sheen, null, rect, 22, 22);
+        dc.DrawRoundedRectangle(sheen, null, rect, radius, radius);
     }
 }
