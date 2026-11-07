@@ -50,13 +50,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             Child = new Border { Padding = new Thickness(18), Child = grid }
         };
-        card = new LiquidGlass { Material = widget.Type, Child = viewport, ClearVariant = dashboard.Settings.GlassVariant != "Regular", ReduceMotion = dashboard.Settings.ReduceGlassMotion, ReduceTransparency = dashboard.Settings.ReduceGlassTransparency };
-        card.SurfaceOutline += outline =>
-        {
-            if (disposed) return;
-            var dpi = VisualTreeHelper.GetDpi(card);
-            BackdropCapture.ShapeBlob(Handle, (int)Math.Round(card.ActualWidth * dpi.DpiScaleX), (int)Math.Round(card.ActualHeight * dpi.DpiScaleY), outline);
-        };
+        card = new LiquidGlass { Material = widget.Type, Child = viewport, ClearVariant = dashboard.Settings.GlassVariant != "Regular", ReduceMotion = dashboard.Settings.ReduceGlassMotion, ReduceTransparency = dashboard.Settings.ReduceGlassTransparency, FrameRate = dashboard.Settings.GlassFps };
         bool darkText = false;
         card.BackgroundLuminance += luminance =>
         {
@@ -126,6 +120,8 @@ internal sealed class WidgetWindow : Window, IDisposable
         }
         finally { placing = false; }
     }
+
+    public void SetFrameRate(int fps) => card.FrameRate = fps;
 
     private void BuildHandles()
     {

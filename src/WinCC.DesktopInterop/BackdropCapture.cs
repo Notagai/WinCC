@@ -10,7 +10,7 @@ public static class BackdropCapture
 {
     public static void ShapeClock(nint window, int width, int height)
     {
-        int diameter = Math.Max(2, (int)(Math.Min(width, height) * .44));
+        int diameter = Math.Max(2, (int)(Math.Min(width, height) * .96));
         nint region = CreateRoundRectRgn(0, 0, width + 1, height + 1, diameter, diameter);
         if (region == 0) throw new Win32Exception();
         // SetWindowRgn transfers ownership on success; delete only when that transfer fails.
@@ -26,7 +26,7 @@ public static class BackdropCapture
     [StructLayout(LayoutKind.Sequential)] private struct NativePoint { public int X, Y; }
     [DllImport("gdi32.dll")] private static extern nint CreatePolygonRgn([In] NativePoint[] points, int count, int mode);
     public static bool Exclude(nint window) => SetWindowDisplayAffinity(window, 0x11);
-    public static BackdropFrame Read(int left, int top, int width, int height, int outputWidth, int outputHeight)
+    public static BackdropFrame Read(int left, int top, int width, int height, int outputWidth, int outputHeight, byte[]? reusablePixels = null)
     {
         if (width <= 0 || height <= 0 || outputWidth is < 1 or > 1024 || outputHeight is < 1 or > 1024)
             throw new ArgumentOutOfRangeException(nameof(width));
@@ -43,7 +43,8 @@ public static class BackdropCapture
             SetStretchBltMode(dc, 4);
             if (!StretchBlt(dc, 0, 0, outputWidth, outputHeight, screen, left, top, width, height, 0x40CC0020))
                 throw new Win32Exception(Marshal.GetLastWin32Error());
-            var pixels = new byte[checked(outputWidth * outputHeight * 4)];
+            int length = checked(outputWidth * outputHeight * 4);
+            var pixels = reusablePixels is not null && reusablePixels.Length == length ? reusablePixels : new byte[length];
             Marshal.Copy(bits, pixels, 0, pixels.Length);
             return new(outputWidth, outputHeight, pixels);
         }

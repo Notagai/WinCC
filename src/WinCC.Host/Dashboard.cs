@@ -13,6 +13,7 @@ public sealed class UserSettings
     public double InterfaceFontSize { get; set; } = 18;
     public double WidgetFontSize { get; set; } = 18;
     public string FontFamily { get; set; } = "Lato";
+    public int GlassFps { get; set; } = 60;
     public string GlassVariant { get; set; } = "Clear";
     public bool ReduceGlassTransparency { get; set; }
     public bool ReduceGlassMotion { get; set; }
@@ -55,7 +56,7 @@ internal sealed class Dashboard : IDisposable
             {
                 if (new FileInfo(settingsFile).Length > 65536) throw new InvalidDataException();
                 Settings = JsonSerializer.Deserialize<UserSettings>(File.ReadAllBytes(settingsFile)) ?? throw new InvalidDataException();
-                if (!double.IsFinite(Settings.InterfaceFontSize) || Settings.InterfaceFontSize is < 12 or > 32 ||
+                if (Settings.GlassFps is < 0 or > 500 || !double.IsFinite(Settings.InterfaceFontSize) || Settings.InterfaceFontSize is < 12 or > 32 ||
                     !double.IsFinite(Settings.WidgetFontSize) || Settings.WidgetFontSize is < 12 or > 32 || Settings.Launchers is null || Settings.Launchers.Count > 100 ||
                     Settings.Theme is not ("Winter Glass" or "Midnight") ||
                     !double.IsFinite(Settings.Latitude) || Settings.Latitude is < -90 or > 90 ||
@@ -185,6 +186,15 @@ internal sealed class Dashboard : IDisposable
     }
     private void ApplyFont() => Application.Current.Resources["DesktopFont"] =
         new System.Windows.Media.FontFamily("/WinCC;component/Assets/Fonts/#" + (Settings.FontFamily == "VT323" ? "VT323" : "Lato"));
+    public void ChangeFrameRate(int fps)
+    {
+        if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
+        if (fps is < 0 or > 500) throw new InvalidOperationException("Frame rate must be 0 (uncapped) or 1–500.");
+        int previous = Settings.GlassFps; Settings.GlassFps = fps;
+        try { SaveSettings(); } catch { Settings.GlassFps = previous; throw; }
+        foreach (var window in windows) window.SetFrameRate(fps);
+        Center.Refresh();
+    }
     public void ChangeGlass(string variant, bool reduceMotion, bool? reduceTransparency = null)
     {
         if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");

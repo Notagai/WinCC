@@ -390,6 +390,44 @@ try
         Check(pixels[0] == 255);
     });
 
+    Test("FPS deadlines include frame work and uncapped adds no delay", () =>
+    {
+        Check(Math.Abs(FramePacing.Delay(2, 2.010, 60).TotalMilliseconds - 6.6667) < .001);
+        Check(FramePacing.Delay(2, 2.100, 60) == TimeSpan.Zero);
+        Check(FramePacing.Delay(2, 2, 0) == TimeSpan.Zero);
+        Check(FramePacing.Delay(2, 2, 120) < FramePacing.Delay(2, 2, 30));
+        Throws<ArgumentOutOfRangeException>(() => FramePacing.Delay(0, 0, 501));
+        Throws<ArgumentOutOfRangeException>(() => FramePacing.Delay(double.NaN, 0, 60));
+    });
+    Test("Rigid glass preserves its silhouette across time and hover lighting", () =>
+    {
+        var source = Enumerable.Repeat((byte)180, 200 * 150 * 4).ToArray();
+        var first = GlassOptics.Render(source, 200, 150, 160, 120, 1, new GlassAppearance(Phase: 0));
+        var later = GlassOptics.Render(source, 200, 150, 160, 120, 1, new GlassAppearance(Phase: 10, Interaction: 1, LightX: .7));
+        for (int i = 3; i < first.Length; i += 4) Check(first[i] == later[i]);
+        Check(!first.SequenceEqual(later));
+    });
+    Test("Geometry cache does not reuse source pixels or stale dimensions", () =>
+    {
+        var source = Enumerable.Repeat((byte)180, 200 * 150 * 4).ToArray();
+        var first = GlassOptics.Render(source, 200, 150, 160, 120);
+        _ = GlassOptics.Render(source, 200, 150, 80, 60);
+        var repeated = GlassOptics.Render(source, 200, 150, 160, 120);
+        Check(first.SequenceEqual(repeated));
+        Array.Fill(source, (byte)20);
+        Check(!first.SequenceEqual(GlassOptics.Render(source, 200, 150, 160, 120)));
+    });
+
+    Test("Reusable optical buffers overwrite old pixels and never mutate source", () =>
+    {
+        var source = Enumerable.Repeat((byte)180, 200 * 150 * 4).ToArray();
+        var output = Enumerable.Repeat((byte)255, 160 * 120 * 4).ToArray();
+        var returned = GlassOptics.Render(source, 200, 150, 160, 120, 1, new GlassAppearance(), output);
+        Check(ReferenceEquals(output, returned) && output[3] == 0);
+        Check(source.All(v => v == 180));
+        Throws<ArgumentException>(() => GlassOptics.Render(source, 200, 150, 160, 120, 1, null, new byte[8]));
+    });
+
 }
 finally { Directory.Delete(root, recursive: true); }
 Console.WriteLine($"{passed} passed, {failed} failed; Windows UI/native checks NOT RUN.");

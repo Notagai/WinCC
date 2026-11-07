@@ -82,6 +82,13 @@ internal sealed class CommandCenter : Window
                     Button(displays, "Display " + (i + 1), () => dashboard.MoveTo(w.Id, display.Key));
             }
         }
+        Heading("Frame rate · " + (dashboard.Settings.GlassFps == 0 ? "Uncapped" : dashboard.Settings.GlassFps + " FPS"));
+        var rates = Row();
+        foreach (int fps in new[] { 15, 30, 60, 90, 120, 144, 165, 240, 360, 0 })
+            Button(rates, (fps == dashboard.Settings.GlassFps ? "✓ " : "") + (fps == 0 ? "Uncapped" : fps.ToString()), () => dashboard.ChangeFrameRate(fps));
+        var adjust = Row();
+        Button(adjust, "−5 FPS", () => dashboard.ChangeFrameRate(Math.Max(1, (dashboard.Settings.GlassFps == 0 ? 60 : dashboard.Settings.GlassFps) - 5)));
+        Button(adjust, "+5 FPS", () => dashboard.ChangeFrameRate(Math.Min(500, (dashboard.Settings.GlassFps == 0 ? 60 : dashboard.Settings.GlassFps) + 5)));
         Heading("Glass");
         var material = Row();
         Button(material, "Clear", () => dashboard.ChangeGlass("Clear", dashboard.Settings.ReduceGlassMotion));

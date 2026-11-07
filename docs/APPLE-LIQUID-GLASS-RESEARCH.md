@@ -29,3 +29,7 @@ The earlier signed-distance lens, numerical normals, chromatic dispersion, bilin
 47 contracts pass, including material-specific checks for localized Clear dimming, interaction/size changes, and distinct Regular/frosted/high-contrast outputs. The complete Windows-targeted Release build passes with zero warnings/errors. Reduced-motion wiring and live capture require an actual Windows UI test; pure optical tests do not establish their native behavior.
 
 The renderer still uses local CPU capture and a 100 ms request interval, processes one frame at a time, and caps material resolution at 640 pixels. It does not provide Apple-level GPU performance. Capture exclusion can hide WinCC from screenshots/recordings. These limitations remain material to evaluating the result.
+
+## Clarified rigid reference and performance follow-up
+
+The latest owner reference requests a rigid floating lens. Geometry wobble has been removed from the runtime clock. Lensing and lighting remain the material cues. Settings now has frame-rate targets and uncapped scheduling; see GLASS.md for measured optical improvements and limits. This is a user-directed choice, not a claim that Apple specifies a particular desktop-clock silhouette or FPS policy.
