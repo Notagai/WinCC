@@ -26,7 +26,7 @@ This is a custom CPU optical renderer, not Apple's proprietary implementation. I
 
 ## Validation
 
-The Release build passes and **64 contracts pass**, including tests that actual background samples are displaced, the centre stays clear, rounded corners have an alpha mask, and changing the background changes the optical output. Windows live capture, compositing, performance and visual acceptance are **NOT RUN** in this Linux environment. Compilation and optical tests do not certify Apple-like visual quality.
+The Release build passes and **65 contracts pass**, including tests that actual background samples are displaced, the centre stays clear, rounded corners have an alpha mask, and changing the background changes the optical output. Windows live capture, compositing, performance and visual acceptance are **NOT RUN** in this Linux environment. Compilation and optical tests do not certify Apple-like visual quality.
 
 See [Apple research and implementation mapping](docs/APPLE-LIQUID-GLASS-RESEARCH.md), [glass implementation notes](docs/GLASS.md), [development](docs/DEVELOPMENT.md), and [agent instructions](AGENTS.md).
 

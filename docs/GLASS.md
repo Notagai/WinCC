@@ -98,3 +98,13 @@ Glass/date font dropdowns include installed and bundled families. Four curated G
 The old eight-direction chamfer approximation for glyph distance could generate faceted normals. An exact Euclidean distance transform now supplies radial distances, tested against off-axis analytic distances. This removes a mathematical source of directional ridges; the user's specific visual artifact still needs screenshot review. No claim of native visual acceptance follows from this change.
 
 Current verification: 64 contracts pass, Release solution build has zero warnings/errors. On Windows, check Alt-Tab and Task View repeatedly, enable Screenshot mode, take a snip containing the clock, resume sampling against animated wallpaper, and verify no recursive images. Test downloaded fonts for both time-shaped glyphs and date, then restart offline. Record Windows build and results; G1-003/G1-004/G1-008 window ordering and capture/visual acceptance remain NOT RUN here.
+
+## Smooth glyph surface after screenshot review
+
+The owner's Windows screenshot shows broad bevel planes, central seams and repeated radial ridges around curved glyphs. Exact Euclidean distances alone did not solve this: the nearest-edge direction still flips at each stroke's medial axis. The former bevel width was also based on the whole clock viewport rather than the letter stroke.
+
+Glyph optics now derive their slope from a smooth height field. Three separable box-blur passes approximate Gaussian smoothing of glyph coverage, with the smoothing width based on stroke radius. A global gradient scale preserves a continuous slope through stroke centres; per-pixel direction normalization is deliberately avoided. Glyph displacement is bounded by stroke radius. Original glyph coverage and outline remain sharp, and the signed distance is retained for rim lighting. The regular capsule surface is unchanged.
+
+Height construction and slope calculation run only when cached geometry changes, not for every optical frame. The additional cache-miss work must still be measured on Windows, particularly when seconds are enabled. A synthetic grid/text comparison through the production renderer showed smooth bends in place of the repeated curved-letter ridges; it is not Windows visual acceptance or an implementation of Apple's proprietary shader.
+
+65 contracts pass, including a symmetric wide-stroke case asserting a gradual slope reversal rather than a central cusp. Release compilation has zero warnings/errors. Windows follow-up: use the same font, size, tint, wallpaper and placement as the supplied screenshot; inspect curved digits and the A/M joins, try narrow and bold fonts, and confirm clear transmission during wallpaper animation. Native checks remain NOT RUN here.

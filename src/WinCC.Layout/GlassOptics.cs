@@ -17,6 +17,17 @@ public static class GlassOptics
             if (cached is { } existing && existing.Width == width && existing.Height == height && ReferenceEquals(existing.Mask, mask)) return existing.Points;
             var points = new LensPoint[width * height];
             var glyphDistance = mask is null ? null : GlyphDistance.Build(mask, width, height);
+            double strokeRadius = glyphDistance is null ? 0 : Math.Max(1, -glyphDistance.Min());
+            var glyphHeight = mask is null ? null : GlyphSurface.Build(mask, width, height, strokeRadius);
+            double Height(int x, int y) => glyphHeight![Math.Clamp(y, 0, height - 1) * width + Math.Clamp(x, 0, width - 1)];
+            double maxGradient = .00001;
+            if (glyphHeight is not null)
+                for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
+                {
+                    double gx = (Height(x + 1, y) - Height(x - 1, y)) * .5;
+                    double gy = (Height(x, y + 1) - Height(x, y - 1)) * .5;
+                    maxGradient = Math.Max(maxGradient, Math.Sqrt(gx * gx + gy * gy));
+                }
             double radius = Math.Min(width, height) * .48, bevel = Math.Min(width, height) * .16;
             double Distance(double x, double y)
             {
@@ -33,6 +44,15 @@ public static class GlassOptics
                 double ny = (Distance(x, y + 1) - Distance(x, y - 1)) * .5;
                 double edge = Math.Clamp(1 + d / bevel, 0, 1);
                 double displacement = Math.Min(bevel * .22, edge / Math.Sqrt(Math.Max(.08, 1 - edge * edge)) * bevel * .12);
+                if (glyphHeight is not null)
+                {
+                    // Use the continuous height gradient directly. Normalizing each pixel
+                    // would reintroduce a sudden direction flip across stroke centres.
+                    nx = (Height(x - 1, y) - Height(x + 1, y)) * .5 / maxGradient;
+                    ny = (Height(x, y - 1) - Height(x, y + 1)) * .5 / maxGradient;
+                    edge = Math.Min(1, Math.Sqrt(nx * nx + ny * ny));
+                    displacement = Math.Min(bevel * .18, strokeRadius * .45);
+                }
                 double dx = (x - width * .5) / (width * .4), dy = (y - height * .5) / (height * .32);
                 points[y * width + x] = new(alpha, nx, ny, edge, displacement, edge * edge * edge * edge * edge, Math.Exp(-Math.Abs(d + 1.2) * 1.5), 1 - .08 * Math.Exp(-2 * (dx * dx + dy * dy)));
             }

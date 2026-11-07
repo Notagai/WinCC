@@ -552,6 +552,23 @@ try
         Throws<ArgumentException>(() => GlyphDistance.Build(new byte[3],11,11));
     });
 
+    Test("Glass stroke height rolls smoothly through its medial axis", () =>
+    {
+        const int w = 120, h = 120;
+        var mask = new byte[w*h];
+        for(int y=15;y<105;y++) for(int x=40;x<80;x++) mask[y*w+x]=255;
+        var surface = GlyphSurface.Build(mask,w,h,20);
+        double H(int x) => surface[60*w+x];
+        double slopeLeft = (H(60)-H(58))*.5, slopeRight = (H(61)-H(59))*.5;
+        double edgeSlope = (H(41)-H(39))*.5;
+        Check(slopeLeft > 0 && slopeRight < 0);
+        Check(Math.Abs(slopeLeft-slopeRight) < edgeSlope*.15);
+        Check(Math.Abs(H(59)-H(60)) < .00001);
+        Check(surface.All(v=>float.IsFinite(v) && v>=0 && v<=1));
+        Check(mask[60*w+39]==0 && mask[60*w+40]==255); // Optical smoothing never changes coverage.
+        Throws<ArgumentException>(()=>GlyphSurface.Build(mask,w,h,double.NaN));
+    });
+
 }
 finally { Directory.Delete(root, recursive: true); }
 Console.WriteLine($"{passed} passed, {failed} failed; Windows UI/native checks NOT RUN.");
