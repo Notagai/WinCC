@@ -300,6 +300,40 @@ try
         using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
         Throws<OperationCanceledException>(() => new AiClient(http).Send("unit-test-placeholder", "test", [new("user", "Hello")], cancellation.Token).GetAwaiter().GetResult());
     });
+    Test("Glass preserves the live centre and masks rounded exterior", () =>
+    {
+        var source = new byte[100 * 75 * 4];
+        for (int i = 0; i < source.Length; i += 4) { source[i] = 40; source[i + 1] = 80; source[i + 2] = 120; }
+        var result = GlassOptics.Render(source, 100, 75, 80, 60);
+        int centre = (30 * 80 + 40) * 4;
+        Check(result[3] == 0 && result[centre + 3] == 255);
+        Check(result[centre] == 40 && result[centre + 1] == 80 && result[centre + 2] == 120);
+    });
+    Test("Glass refraction changes real source samples, not just a tint", () =>
+    {
+        var source = new byte[200 * 150 * 4];
+        for (int y = 0; y < 150; y++) for (int x = 0; x < 200; x++)
+        {
+            int i = (y * 200 + x) * 4;
+            source[i] = (byte)((x / 4 % 2) * 200); source[i + 1] = (byte)((y / 4 % 2) * 200); source[i + 2] = (byte)x;
+        }
+        var plain = GlassOptics.Render(source, 200, 150, 160, 120, 0);
+        var refracted = GlassOptics.Render(source, 200, 150, 160, 120, 1);
+        Check(plain.Zip(refracted).Count(pair => pair.First != pair.Second) > 500);
+        int middle = (60 * 160 + 80) * 4;
+        Check(plain[middle] == refracted[middle]);
+        Check(source.Any(v => v != 0));
+    });
+    Test("Glass responds to changing background and rejects invalid frames", () =>
+    {
+        var dark = new byte[100 * 75 * 4]; var bright = Enumerable.Repeat((byte)255, dark.Length).ToArray();
+        int centre = (30 * 80 + 40) * 4;
+        Check(GlassOptics.Render(dark, 100, 75, 80, 60)[centre] == 0);
+        Check(GlassOptics.Render(bright, 100, 75, 80, 60)[centre] == 255);
+        Throws<ArgumentOutOfRangeException>(() => GlassOptics.Render(new byte[10], 100, 75, 80, 60));
+        Throws<ArgumentOutOfRangeException>(() => GlassOptics.Render(dark, 100, 75, 80, 60, double.NaN));
+    });
+
 }
 finally { Directory.Delete(root, recursive: true); }
 Console.WriteLine($"{passed} passed, {failed} failed; Windows UI/native checks NOT RUN.");

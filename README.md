@@ -1,72 +1,31 @@
 # WinCC
 
-**WinCC (Windows Command Center)** is a customizable **Windows 11 desktop home screen and command center**.
+A Windows 11 desktop clock with an app-owned refractive glass surface.
 
-> **Implementation candidate:** native WPF application, layout engine, widgets, optional provider adapters, tests and portable packaging. Windows 11 desktop acceptance gates remain **NOT RUN**. See [development instructions](docs/DEVELOPMENT.md) and [validation evidence](docs/VALIDATION.md).
+## Run
 
-## Build and run
-
-On Windows 11, install the .NET SDK pinned in [global.json](global.json), then:
+Use the .NET SDK pinned in `global.json`:
 
 ```powershell
 dotnet build WinCC.sln -c Release
 .\tools\dev-test.ps1
-dotnet run --project src/WinCC.Host -c Release -- --windowed
+dotnet run --project src/WinCC.Host -c Release
 ```
 
-The dev test command runs the dependency-free layout and provider contract suite; it does not require Windows. On Linux, use `bash tools/cloud-dotnet.sh run --project tests/WinCC.Layout.Tests -c Release`.
+Settings contains headings and controls for clock editing, time format, display, typeface and text size. Closing Settings minimizes it; Exit quits WinCC. In Edit Mode, drag the header or resize with the bottom handle. Done saves and Cancel discards the draft. Content scales with the clock. Wallpaper Engine runs independently.
 
-Start in ordinary window mode first. Omit `--windowed` to try experimental desktop positioning. The Command Center stays available on the taskbar; closing it minimizes the Command Center; Exit WinCC closes all widgets. Nothing changes Explorer, Wallpaper Engine or Windows startup settings.
+Only the clock is active. Older widget layouts and notes remain on disk for recovery; the removed widgets are not rendered or offered in Settings. A blank saved canvas remains valid; use Edit clock → Add clock.
 
-For a portable build that includes the runtime:
+## Refractive glass
 
-```powershell
-dotnet publish src/WinCC.Host -c Release -r win-x64 --self-contained true -o artifacts/win-x64
-.\artifacts\win-x64\WinCC.exe --windowed
-```
+The renderer captures a padded local background region into memory, then applies a rounded-lens displacement field, bilinear sampling, slight RGB dispersion, Fresnel reflection and edge highlights. The centre transmits the captured background. The clock host itself is opaque and clipped to the lens outline; the apparent transmission comes from the sampled optical image, not OS translucency. Clock text is rendered separately and remains sharp. No Mica, Acrylic, DWM backdrop effect, remote service or external image is used.
 
-The canvas starts blank. Choose **Edit Dashboard**, add widgets or apply **Winter Glass**, arrange them, then **Done**. **Cancel** restores the saved layout; notes autosave independently. Weather and Spotify are opt-in under **Optional connections**. AI requires `WINCC_AI_API_KEY` in the app process environment and sends messages only when requested. See [provider setup](docs/DEVELOPMENT.md#optional-providers).
+This is a custom CPU optical renderer, not Apple's proprietary implementation. It requests up to ten frames per second, with a maximum 640-pixel render dimension; large clocks upscale the sampled material while text stays vector rendered. A single frame is processed at a time, off the UI thread. Hidden/minimized clocks stop sampling. Background pixels are neither saved nor uploaded.
 
-## Approved dashboard: blank canvas with two modes
+**Capture exclusion:** WinCC excludes its own windows from OS capture to prevent recursive feedback. The clock and Settings may be absent from screenshots, recordings and screen sharing. If exclusion cannot be enabled, refraction is disabled and an error is shown. A failed capture discards the sampled image rather than displaying stale material. Protected content, remote desktops, HDR/color management and driver-specific capture behavior require Windows testing.
 
-**WinCC is a freeform widget canvas**, not a fixed two-column dashboard.
+## Validation
 
-- **Normal Mode (default):** widgets remain fixed in place and cannot be moved, resized, added or removed. Their controls still work, including editing notes and opening AI chat.
-- **Edit Mode:** add, move, resize, remove and reorder widgets with visible handles, optional guides, Undo/Redo, **Done** to save, and **Cancel** to revert.
-- **Blank canvas is valid:** start with zero widgets or choose an optional preset. The blue-gray glass mockup is a *Winter Glass example layout*, not a mandatory arrangement.
-- **Widget catalog:** date/time, local calendar, Spotify, system metrics, weather, editable notes and expandable AI Dynamic Island. Unconfigured or unavailable providers show explicit status.
-- Wallpaper Engine remains visible; the real Windows 11 taskbar stays intact.
+The Release build passes and **44 contracts pass**, including tests that actual background samples are displaced, the centre stays clear, rounded corners have an alpha mask, and changing the background changes the optical output. Windows live capture, compositing, performance and visual acceptance are **NOT RUN** in this Linux environment. Compilation and optical tests do not certify Apple-like visual quality.
 
-See **[freeform canvas specification](docs/CANVAS-EDITOR.md)**, **[dashboard visual style](docs/DASHBOARD-DESIGN.md)**, and **[example preset diagram](design/dashboard-layout.svg)**. Sample data in design images is illustrative.
-
-## Project scope
-
-WinCC will provide a desktop-hosted home screen that coexists with Wallpaper Engine **without integrating with it**, eventually supporting widgets, a launcher, local layouts, custom themes and reliable Windows desktop behavior.
-
-**Not in this repository:** custom lock screen, credentials, biometrics, Windows authentication, sign-in UI, Win+L interception or system-login changes. These are explicitly outside WinCC's scope.
-
-## Start here for AI agents
-
-**Read [AGENTS.md](AGENTS.md) before any change.**
-
-| Document | Contents |
-| --- | --- |
-| [Canvas and Edit Mode](docs/CANVAS-EDITOR.md) | Normative freeform layout, Normal/Edit modes, save/cancel and resize rules |
-| [Dashboard design](docs/DASHBOARD-DESIGN.md) | Approved widgets, optional Winter Glass preset and visual style |
-| [Dashboard schematic](design/dashboard-layout.svg) | Example optional starter preset, not fixed placement |
-| [Product brief](docs/PRODUCT.md) | Goals and non-goals |
-| [Implementation spec](docs/IMPLEMENTATION.md) | Precise gates, Windows APIs, window behavior and build sequence |
-| [Contracts](docs/CONTRACTS.md) | Proposed layout JSON, coordinate system and UI/host messages |
-| [Windows test matrix](docs/TEST-MATRIX.md) | Manual repro steps, test IDs, expected results and evidence format |
-| [Architecture](docs/ARCHITECTURE.md) | Candidate native host and UI layout |
-| [Roadmap](docs/ROADMAP.md) | G0-G5 phase approvals |
-| [Operational safety](docs/SECURITY.md) | Exit, recovery and data safeguards |
-| [Decision log](docs/decisions/0001-planning-baseline.md) | Provisional design choices |
-
-## Acceptance status
-
-**G1 remains unverified:** Windows 11 transparency, interactivity, ordinary app window layering, and recovery need real desktop evidence.
-
-**G2/G3 candidate:** canvas transactions, seven widget types, local persistence and optional integrations are implemented. Automated core/provider contracts pass; this does not pass the Windows UI test matrix.
-
-The owner authorized implementation after the original G0 planning baseline. [ADR 0003](docs/decisions/0003-native-implementation-candidate.md) records implementation choices and remaining release gates.
+See [glass implementation notes](docs/GLASS.md), [development](docs/DEVELOPMENT.md), and [agent instructions](AGENTS.md).

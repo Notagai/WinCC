@@ -12,6 +12,5 @@
     <Content Include="Assets/Fonts/*OFL.txt" CopyToOutputDirectory="PreserveNewest" />
     <ProjectReference Include="../WinCC.Layout/WinCC.Layout.csproj" />
     <ProjectReference Include="../WinCC.DesktopInterop/WinCC.DesktopInterop.csproj" />
-    <ProjectReference Include="../WinCC.Integrations/WinCC.Integrations.csproj" />
   </ItemGroup>
 </Project>

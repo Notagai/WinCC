@@ -5,7 +5,6 @@ using System.Windows;
 using System.Windows.Threading;
 using WinCC.DesktopInterop;
 using WinCC.Layout;
-using WinCC.Integrations;
 
 namespace WinCC.Host;
 
@@ -36,11 +35,7 @@ internal sealed class Dashboard : IDisposable
     public bool Windowed { get; }
     public bool ReadOnly { get; }
     public EditorSession Editor { get; }
-    public NotesStore Notes { get; } = new(Path.Combine(Paths.Data, "notes"));
     public UserSettings Settings { get; private set; } = new();
-    public System.Net.Http.HttpClient Http { get; } = ProviderHttp.CreateClient();
-    public Dictionary<string, List<ChatMessage>> Chats { get; } = [];
-    public Dictionary<string, string> ChatDrafts { get; } = [];
     public IReadOnlyList<MonitorArea> Monitors { get; private set; } = [];
     public CommandCenter Center { get; }
     public string Status { get; private set; } = "Normal Mode · Your layout is locked.";
@@ -86,6 +81,7 @@ internal sealed class Dashboard : IDisposable
                                      InvalidOperationException or System.ComponentModel.Win32Exception or JsonException)
         {
             Notify(e is InvalidOperationException ? e.Message : "Operation failed. Your saved data is preserved. " + e.Message);
+            MessageBox.Show(Center, e.Message, "WinCC");
             Log.Write("operation.failed", e.GetType().Name);
         }
     }
@@ -97,9 +93,8 @@ internal sealed class Dashboard : IDisposable
     }
     public void Done()
     {
-        if (!FlushNotes()) return;
         // Require saved geometry to fit a present target; absent monitors retain their saved association.
-        foreach (var w in Editor.Current.Active.Widgets)
+        foreach (var w in Editor.Current.Active.Widgets.Where(w => w.Type == "clock"))
         {
             var m = Monitors.FirstOrDefault(m => m.Key == w.MonitorKey || w.MonitorKey == "primary" && m.Primary);
             if (m is not null && (w.RectDip.X + w.RectDip.Width > m.WidthDip + 0.1 ||
@@ -111,16 +106,15 @@ internal sealed class Dashboard : IDisposable
     }
     public void Cancel()
     {
-        if (Editor.IsDirty && MessageBox.Show(Center, "Discard all unsaved layout changes? Notes are saved separately.",
+        if (Editor.IsDirty && MessageBox.Show(Center, "Discard all unsaved clock changes?",
                 "Cancel editing", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         Editor.Cancel(); Notify("Normal Mode · Draft discarded."); Render();
     }
     public void Render()
     {
-        if (!FlushNotes()) return;
         foreach (var window in windows) window.Dispose();
         windows.Clear();
-        foreach (var widget in Editor.Current.Active.Widgets.OrderByDescending(w => w.ZIndex))
+        foreach (var widget in Editor.Current.Active.Widgets.Where(w => w.Type == "clock").OrderByDescending(w => w.ZIndex))
         {
             var window = new WidgetWindow(this, widget);
             windows.Add(window); window.Show(); window.ApplyPlacement();
@@ -129,6 +123,7 @@ internal sealed class Dashboard : IDisposable
     }
     public void Add(string type, string monitorKey)
     {
+        if (type != "clock") throw new InvalidOperationException("Only the clock is available.");
         var spec = WidgetCatalog.Get(type);
         var monitor = Geometry.Resolve(monitorKey, Monitors);
         if (monitor.WidthDip < spec.MinWidth || monitor.HeightDip < spec.MinHeight)
@@ -167,7 +162,7 @@ internal sealed class Dashboard : IDisposable
     {
         var m = Geometry.Resolve("primary", Monitors);
         // This is an optional, undoable draft operation. Never apply it on startup.
-        string[] types = ["clock", "calendar", "spotify", "system", "weather", "notes", "ai-island"];
+        string[] types = ["clock"];
         Editor.Change(d =>
         {
             d.Active.Widgets.Clear();
@@ -215,54 +210,9 @@ internal sealed class Dashboard : IDisposable
         try { SaveSettings(); } catch { Settings.Theme = previous; throw; }
         Render();
     }
-    public void ConfigureProviders(bool weatherEnabled, double latitude, double longitude, bool fahrenheit, bool spotify, string model)
-    {
-        if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
-        if (!double.IsFinite(latitude) || latitude is < -90 or > 90 || !double.IsFinite(longitude) || longitude is < -180 or > 180)
-            throw new InvalidOperationException("Enter valid latitude (−90 to 90) and longitude (−180 to 180).");
-        if (string.IsNullOrWhiteSpace(model) || model.Length > 100) throw new InvalidOperationException("Enter a valid AI model name.");
-        var previous = JsonSerializer.SerializeToUtf8Bytes(Settings);
-        Settings.WeatherEnabled = weatherEnabled; Settings.Latitude = latitude; Settings.Longitude = longitude;
-        Settings.Fahrenheit = fahrenheit; Settings.SpotifyEnabled = spotify; Settings.AiModel = model;
-        try { SaveSettings(); } catch { Settings = JsonSerializer.Deserialize<UserSettings>(previous)!; throw; }
-        Render(); Notify("Provider preferences saved. Weather and Spotify connect only when enabled. AI sends only when you choose Send.");
-    }
-    public void AddLauncher(string path)
-    {
-        if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
-        if (!ValidTarget(path)) throw new InvalidOperationException("Choose an existing local .exe or .lnk file.");
-        if (Settings.Launchers.Contains(path)) return;
-        if (Settings.Launchers.Count >= 100) throw new InvalidOperationException("Launcher limit reached.");
-        Settings.Launchers.Add(path);
-        try { SaveSettings(); } catch { Settings.Launchers.Remove(path); throw; }
-        Center.Refresh();
-    }
-    public void RemoveLauncher(string path)
-    {
-        if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
-        var previous = Settings.Launchers.ToList(); Settings.Launchers.Remove(path);
-        try { SaveSettings(); } catch { Settings.Launchers = previous; throw; }
-        Center.Refresh();
-    }
-    public void Launch(string path)
-    {
-        if (!Settings.Launchers.Contains(path) || !ValidTarget(path)) throw new InvalidOperationException("Launcher target is unavailable.");
-        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-    }
-    private static bool ValidTarget(string path) => Path.IsPathFullyQualified(path) && !path.StartsWith(@"\\", StringComparison.Ordinal) &&
-        (Path.GetExtension(path).Equals(".exe", StringComparison.OrdinalIgnoreCase) ||
-         Path.GetExtension(path).Equals(".lnk", StringComparison.OrdinalIgnoreCase)) && File.Exists(path);
     private void SaveSettings() => AtomicFile.Write(settingsFile, JsonSerializer.SerializeToUtf8Bytes(Settings), backup: true);
-    private bool FlushNotes()
-    {
-        bool okay = true;
-        foreach (var w in windows) if (!w.FlushNote()) okay = false;
-        return okay;
-    }
     public bool RequestExit()
     {
-        if (!FlushNotes() && MessageBox.Show(Center, "Some notes could not be saved. Exit anyway and lose those unsaved edits?",
-                "Unsaved notes", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return false;
         if (Editor.IsDirty && MessageBox.Show(Center, "Exit and discard the unsaved layout draft?",
                 "Unsaved layout", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return false;
         return true;
@@ -313,6 +263,5 @@ internal sealed class Dashboard : IDisposable
         lifecycle.Stop();
         foreach (var window in windows) window.Dispose();
         windows.Clear();
-        Http.Dispose();
     }
 }

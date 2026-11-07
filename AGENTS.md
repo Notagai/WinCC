@@ -10,6 +10,10 @@
 
 **IMPLEMENTATION AUTHORIZED:** On 2026-11-05 the owner requested the entire project. The repository now contains an implementation candidate; see `docs/DEVELOPMENT.md`, `docs/VALIDATION.md`, and ADR 0003. This supersedes the former G0-only restriction. It does not establish Windows acceptance: G1 and native G2/G3/G4 tests remain unverified. A design spec alone is still not authorization for unrelated features, Windows changes, or installation/persistence.
 
+## Latest owner scope
+
+The owner now requests **clock only**, Settings with headings/buttons and no explanatory copy, and a custom live-background refractive material. This supersedes the earlier multi-widget feature catalog and visual presets. Read `docs/GLASS.md` for capture exclusion, optical implementation and unresolved Windows acceptance. Preserve legacy layouts/notes; do not reactivate removed widgets from older documentation. Refraction must use actual sampled pixels and must not be described as verified on Windows until tested there.
+
 ## Mandatory reading order
 
 1. `README.md` — project status and scope.
