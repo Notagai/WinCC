@@ -117,6 +117,7 @@ internal sealed class CommandCenter : Window
         Button(position, "X only", () => dashboard.SnapClock(Read(xPosition), null));
         Button(position, "Y only", () => dashboard.SnapClock(null, Read(yPosition)));
         Button(position, "Center", () => dashboard.SnapClock(50, 50));
+        Button(position, "Fill display", dashboard.FitClockToDisplay);
         var shape = Row(); Button(shape, "Glass lens", () => dashboard.ChangeClockShape(false)); Button(shape, "Time-shaped glass", () => dashboard.ChangeClockShape(true));
         Heading("Presets");
         for (int slot = 1; slot <= 3; slot++)
@@ -161,9 +162,18 @@ internal sealed class CommandCenter : Window
         content.Children.Add(tabs);
         FontSize = dashboard.Settings.InterfaceFontSize;
     }
+    private string designPage = "Typography";
     private void BuildDesign()
     {
         Heading("Text design");
+        var host = panel;
+        var pages = new TabControl(); host.Children.Add(pages);
+        string wanted = designPage;
+        void Group(string name)
+        {
+            panel = new StackPanel { Margin = new Thickness(8) };
+            pages.Items.Add(new TabItem { Header = name, Content = panel });
+        }
         var d = dashboard.Settings.Design;
         TextBox Field(string label, string value)
         {
@@ -172,20 +182,29 @@ internal sealed class CommandCenter : Window
             System.Windows.Automation.AutomationProperties.SetName(field, label); row.Children.Add(field); return field;
         }
         string N(double value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        Group("Typography");
         var font = Field("Glass font", d.Font); var weight = Field("Weight · 100–900", N(d.Weight));
         var size = Field("Size · 25–200%", N(d.SizePercent));
         var sx = Field("Horizontal stretch · 0.4–2.5", N(d.StretchX)); var sy = Field("Vertical stretch · 0.4–2.5", N(d.StretchY));
         var tracking = Field("Letter spacing · −4–20", N(d.Tracking)); var stroke = Field("Stroke thickness · 0–8", N(d.Stroke));
+        var timeFormat = Field("Custom time format", d.TimeFormat);
+        bool show = d.ShowDate, italic = d.Italic;
+        var italicToggle = new Button { Content = italic ? "Italic on" : "Italic off" }; italicToggle.Click += (_, _) => { italic = !italic; italicToggle.Content = italic ? "Italic on" : "Italic off"; }; Row().Children.Add(italicToggle);
+        Group("Material & tint");
         var refraction = Field("Lens thickness · 0–2", N(d.Refraction));
         var tint = Field("Glass tint · #RRGGBB", d.Tint); var amount = Field("Tint strength · 0–35%", N(d.TintAmount * 100));
-        var timeFormat = Field("Custom time format", d.TimeFormat);
+        var swatches = Row();
+        foreach (var choice in new[] { ("Ice", "#BFD5FF"), ("Rose", "#FFC0DA"), ("Amber", "#FFD599"), ("Mint", "#A4FFE0") })
+            Button(swatches, choice.Item1, () => { tint.Text = choice.Item2; amount.Text = "18"; });
+        Button(swatches, "Tint off", () => amount.Text = "0");
+        Group("Date");
         var dateFormat = Field("Date format", d.DateFormat); var dateFont = Field("Date font", d.DateFont);
         var dateSize = Field("Date size · 8–40", N(d.DateSize)); var dateLift = Field("Date lift · 0–25", N(d.DateLift));
         var dateColor = Field("Date color · #RRGGBB", d.DateColor);
-        bool show = d.ShowDate, italic = d.Italic;
-        var toggles = Row();
-        var dateToggle = new Button { Content = show ? "Date shown" : "Date hidden" }; dateToggle.Click += (_, _) => { show = !show; dateToggle.Content = show ? "Date shown" : "Date hidden"; }; toggles.Children.Add(dateToggle);
-        var italicToggle = new Button { Content = italic ? "Italic on" : "Italic off" }; italicToggle.Click += (_, _) => { italic = !italic; italicToggle.Content = italic ? "Italic on" : "Italic off"; }; toggles.Children.Add(italicToggle);
+        var dateToggle = new Button { Content = show ? "Date shown" : "Date hidden" }; dateToggle.Click += (_, _) => { show = !show; dateToggle.Content = show ? "Date shown" : "Date hidden"; }; Row().Children.Add(dateToggle);
+        foreach (TabItem tab in pages.Items) if ((string)tab.Header == wanted) pages.SelectedItem = tab;
+        pages.SelectionChanged += (_, _) => { if (pages.SelectedItem is TabItem selected) designPage = (string)selected.Header; };
+        panel = host;
         double Read(TextBox field) => double.Parse(field.Text, System.Globalization.CultureInfo.InvariantCulture);
         var actions = Row();
         Button(actions, "Apply design", () => dashboard.ApplyDesign(new ClockDesign

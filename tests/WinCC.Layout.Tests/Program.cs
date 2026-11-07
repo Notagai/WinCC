@@ -168,7 +168,7 @@ try
     Test("NaN, infinity, negative and oversized geometry rejected", () =>
     {
         foreach (var r in new[] { new RectDip(double.NaN, 0, 260, 180), new(0, double.PositiveInfinity, 260, 180),
-                     new(-1, 0, 260, 180), new(0, 0, 10, 180), new(0, 0, 5000, 180) })
+                     new(-1, 0, 260, 180), new(0, 0, 10, 180), new(0, 0, 100001, 180) })
         {
             var d = WithClock(); d.Active.Widgets[0] = Clock() with { RectDip = r };
             Throws<InvalidDataException>(() => LayoutValidator.Validate(d));
@@ -497,6 +497,40 @@ try
         Check(tinted[center+2] > tinted[center] && tinted[center+3] == untinted[center+3]);
         Check(Math.Abs(tinted[center+2]-untinted[center+2]) < 20);
         Throws<ArgumentOutOfRangeException>(() => GlassOptics.Render(source,200,150,160,120,1,new GlassAppearance(TintAmount:1)));
+    });
+
+    Test("Clock can fill a 4K or ultrawide work area without the old fixed cap", () =>
+    {
+        var spec = WidgetCatalog.Get("clock");
+        var area = new MonitorArea("wide", 0, 0, 5120, 2120, 1, true);
+        var fitted = Geometry.Clamp(new(0,0,5120,2120), spec, area);
+        Check(fitted.Width == 5120 && fitted.Height == 2120);
+        var document = WithClock(); document.Active.Widgets[0] = Clock() with { RectDip = fitted };
+        LayoutValidator.Validate(document);
+    });
+    Test("Tint strength is effective, monotonic and preserves background detail", () =>
+    {
+        var source = Enumerable.Repeat((byte)180,200*150*4).ToArray();
+        var low = GlassOptics.Render(source,200,150,160,120,1,new GlassAppearance(TintRgb:0xFF0000,TintAmount:.1));
+        var high = GlassOptics.Render(source,200,150,160,120,1,new GlassAppearance(TintRgb:0xFF0000,TintAmount:.3));
+        int center=(60*160+80)*4;
+        Check(high[center] < low[center] - 25);
+        Check(high[center+2] == low[center+2]);
+        Array.Fill(source,(byte)90);
+        var darker = GlassOptics.Render(source,200,150,160,120,1,new GlassAppearance(TintRgb:0xFF0000,TintAmount:.3));
+        Check(darker[center+2] < high[center+2]);
+    });
+    Test("Neutral glass does not create rainbow channel splitting", () =>
+    {
+        var source = new byte[200*150*4];
+        for(int y=0;y<150;y++) for(int x=0;x<200;x++)
+        {
+            int i=(y*200+x)*4; byte shade=(byte)(x*255/199);
+            source[i]=source[i+1]=source[i+2]=shade;
+        }
+        var output=GlassOptics.Render(source,200,150,160,120,1,new GlassAppearance());
+        for(int i=0;i<output.Length;i+=4)
+            if(output[i+3]==255) Check(Math.Abs(output[i]-output[i+2])<=2);
     });
 
 }

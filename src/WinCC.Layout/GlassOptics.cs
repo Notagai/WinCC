@@ -32,9 +32,9 @@ public static class GlassOptics
                 double nx = (Distance(x + 1, y) - Distance(x - 1, y)) * .5;
                 double ny = (Distance(x, y + 1) - Distance(x, y - 1)) * .5;
                 double edge = Math.Clamp(1 + d / bevel, 0, 1);
-                double displacement = Math.Min(bevel * .65, edge / Math.Sqrt(Math.Max(.08, 1 - edge * edge)) * bevel * .35);
+                double displacement = Math.Min(bevel * .22, edge / Math.Sqrt(Math.Max(.08, 1 - edge * edge)) * bevel * .12);
                 double dx = (x - width * .5) / (width * .4), dy = (y - height * .5) / (height * .32);
-                points[y * width + x] = new(alpha, nx, ny, edge, displacement, edge * edge * edge * edge * edge, Math.Exp(-Math.Abs(d + 1.2) * 1.5), 1 - .18 * Math.Exp(-2 * (dx * dx + dy * dy)));
+                points[y * width + x] = new(alpha, nx, ny, edge, displacement, edge * edge * edge * edge * edge, Math.Exp(-Math.Abs(d + 1.2) * 1.5), 1 - .08 * Math.Exp(-2 * (dx * dx + dy * dy)));
             }
             cached = new(width, height, mask, points); // One bounded cache; resizing replaces the old geometry.
             return points;
@@ -55,6 +55,10 @@ public static class GlassOptics
         if (material is not null && (!double.IsFinite(material.MaterialScale) || material.MaterialScale is < .1 or > 10 ||
             !double.IsFinite(material.Interaction) || material.Interaction is < 0 or > 1 ||
             !double.IsFinite(material.TintAmount) || material.TintAmount is < 0 or > .35 || material.TintRgb is < 0 or > 0xFFFFFF || !double.IsFinite(material.Phase) || !double.IsFinite(material.LightX) || !double.IsFinite(material.LightY))) throw new ArgumentOutOfRangeException(nameof(appearance));
+        double tintAmount = material?.TintAmount ?? 0; int tintRgb = material?.TintRgb ?? 0xFFFFFF;
+        double tintB = Math.Exp(-3 * tintAmount * (1 - (tintRgb & 255) / 255d));
+        double tintG = Math.Exp(-3 * tintAmount * (1 - ((tintRgb >> 8) & 255) / 255d));
+        double tintR = Math.Exp(-3 * tintAmount * (1 - ((tintRgb >> 16) & 255) / 255d));
         double thickness = material is null ? 1 : Math.Clamp(Math.Sqrt(material.MaterialScale), .8, 1.6);
         double radius = Math.Min(width, height) * .48, bevel = Math.Min(width, height) * .16;
         double Distance(double x, double y)
@@ -93,12 +97,12 @@ public static class GlassOptics
             double ny = geometry is null ? (Distance(x, y + 1) - Distance(x, y - 1)) * .5 : point.Ny;
             double edge = geometry is null ? Math.Clamp(1 + distance / bevel, 0, 1) : point.Edge;
             double slope = geometry is null ? edge / Math.Sqrt(Math.Max(.08, 1 - edge * edge)) : 0;
-            double displacement = (geometry is null ? Math.Min(bevel * .65, slope * bevel * .35) : point.Displacement) * strength * thickness;
+            double displacement = (geometry is null ? Math.Min(bevel * .22, slope * bevel * .12) : point.Displacement) * strength * thickness;
             double fresnel = geometry is null ? edge * edge * edge * edge * edge : point.Fresnel;
             double light = Math.Max(0, nx * (material?.LightX ?? -.65) + ny * (material?.LightY ?? -.75));
             double energy = material?.Interaction ?? 0;
-            double reflection = fresnel * (.06 + .30 * light + energy * .12);
-            double rim = (geometry is null ? Math.Exp(-Math.Abs(distance + 1.2) * 1.5) : point.Rim) * (.12 + .5 * light);
+            double reflection = fresnel * (.06 + .18 * light + energy * .08);
+            double rim = (geometry is null ? Math.Exp(-Math.Abs(distance + 1.2) * 1.5) : point.Rim) * (.16 + .45 * light);
             double labelDim = 1;
             if (material is { Clear: true, ReducedTransparency: false, HighContrast: false })
             {
@@ -106,13 +110,13 @@ public static class GlassOptics
                 else
                 {
                     double dx = (x - width * .5) / (width * .4), dy = (y - height * .5) / (height * .32);
-                    labelDim -= .18 * Math.Exp(-2 * (dx * dx + dy * dy));
+                    labelDim -= .08 * Math.Exp(-2 * (dx * dx + dy * dy));
                 }
             }
             int index = (y * width + x) * 4;
             for (int channel = 0; channel < 3; channel++)
             {
-                double dispersion = channel == 2 ? 1.025 : channel == 0 ? .975 : 1;
+                double dispersion = channel == 2 ? 1.002 : channel == 0 ? .998 : 1;
                 double sx = (x + .5 - nx * displacement * dispersion) / width * sourceWidth * .8 + sourceWidth * .1;
                 double sy = (y + .5 - ny * displacement * dispersion) / height * sourceHeight * .8 + sourceHeight * .1;
                 double pixel = Sample(sx, sy, channel);
@@ -139,16 +143,16 @@ public static class GlassOptics
                         double diffuse = (Sample(sx - spread, sy, channel) + Sample(sx + spread, sy, channel) +
                             Sample(sx, sy - spread, channel) + Sample(sx, sy + spread, channel)) * .25;
                         pixel = pixel * .72 + diffuse * .28;
-                        pixel = pixel * .88 + 24 * .12;
+                        pixel *= .96;
                     }
                     if (!material.HighContrast && material.TintAmount > 0)
                     {
-                        int tintChannel = (material.TintRgb >> (channel * 8)) & 255;
-                        double colored = pixel * .7 + tintChannel * .3;
-                        pixel += (colored - pixel) * material.TintAmount;
+                        // Selective transmission colors the sampled light, not an opaque RGB overlay.
+                        pixel *= channel == 0 ? tintB : channel == 1 ? tintG : tintR;
                     }
                     pixel += energy * light * edge * 12;
                 }
+                if (material is { HighContrast: false }) pixel *= 1 - edge * .045 * (1 - light);
                 // Keep the centre clear. Reflection grows toward the lens edge, not across the entire card.
                 output[index + channel] = (byte)Math.Clamp(pixel * (1 - reflection) + 255 * (reflection + rim), 0, 255);
             }

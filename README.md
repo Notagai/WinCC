@@ -26,7 +26,7 @@ This is a custom CPU optical renderer, not Apple's proprietary implementation. I
 
 ## Validation
 
-The Release build passes and **59 contracts pass**, including tests that actual background samples are displaced, the centre stays clear, rounded corners have an alpha mask, and changing the background changes the optical output. Windows live capture, compositing, performance and visual acceptance are **NOT RUN** in this Linux environment. Compilation and optical tests do not certify Apple-like visual quality.
+The Release build passes and **62 contracts pass**, including tests that actual background samples are displaced, the centre stays clear, rounded corners have an alpha mask, and changing the background changes the optical output. Windows live capture, compositing, performance and visual acceptance are **NOT RUN** in this Linux environment. Compilation and optical tests do not certify Apple-like visual quality.
 
 See [Apple research and implementation mapping](docs/APPLE-LIQUID-GLASS-RESEARCH.md), [glass implementation notes](docs/GLASS.md), [development](docs/DEVELOPMENT.md), and [agent instructions](AGENTS.md).
 
@@ -39,3 +39,7 @@ Three layout preset slots save positions, sizes and per-clock format settings. S
 The Design tab adds subtle #RRGGBB glass tint (0–35%), removable date, custom time/date formats, separate date font/color/size/lift, and glass-glyph font, weight, italic, size, tracking, stroke and independent X/Y compression/stretch. Bundled Lato/VT323 and installed family names are supported; fonts are not downloaded. Apply design saves the form; Reset restores defaults. Extreme transforms fit inside the clock viewport rather than stretching the window itself.
 
 Clock → Position uses the widget centre in percent of the selected display's usable work area. X=50, Y=50 centres it; edge positions clamp to stay reachable. X only / Y only retain the other axis at its current relative percentage. Anchors persist across resolution changes and are included in layout presets; dragging or keyboard movement releases them. Position commits immediately outside Edit Mode, or stays in the current draft while editing. Appearance preferences remain app-wide.
+
+Design now has Typography, Material & tint, and Date subtabs. Pick a tint swatch (which sets a nonzero strength) or enter #RRGGBB/strength, then Apply design. Tint off sets strength to zero; pure white tint is neutral transmission. High-contrast mode deliberately bypasses tint. Color is applied by selective transmission of the actual sampled background, not an opaque color layer.
+
+The default optical profile now has much less RGB dispersion and edge displacement, with soft rim lighting and opposing-edge contrast for visibility. Regular mode no longer mixes a fixed gray backing into the sample. Clock → Position → Fill display fits the selected display's usable area, including 4K/ultrawide sizes; the taskbar remains outside that work area. The optical image still uses the bounded render resolution, so full-display geometry does not imply full-resolution capture.

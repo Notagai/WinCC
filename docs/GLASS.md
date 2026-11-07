@@ -71,8 +71,18 @@ Current build: zero warnings/errors; 55 contracts pass. The new cases cover pres
 
 Glyph outlines are built character by character for tracking, optionally dilated with a stroke, then independently transformed in X and Y. The final transformed bounds are contained in the viewport, so overly large values cannot spill into unrelated desktop areas. Font changes and custom formats invalidate the cached glyph mask; steady frames reuse it.
 
-Tint is luminance-preserving/lightweight mixing, not an opaque fill, and high-contrast mode bypasses it. The material still samples the real background. Text customization and native font selection need Windows visual validation.
+Tint uses selective per-channel transmission, not an opaque fill, and high-contrast mode bypasses it. The material still samples the real background. Text customization and native font selection need Windows visual validation.
 
 Saved X/Y anchors represent centre coordinates in the usable work area, not absolute screen pixels; 50/50 centres the entire clock. Position clamps to reachable bounds, reprojects on display changes and supports negative monitor origins. Manual move/resize/nudge releases the relative anchor; canceled gestures restore it. The layout validator rejects nonfinite and out-of-range anchor metadata. Layout presets include anchors; appearance/design remains app-wide.
 
 59 contracts cover the current implementation, including design serialization/validation, percent-centre projection, anchor persistence and tint channel behavior. Native WPF controls and transformed text are not visually validated on Windows here.
+
+## Softer optics, tint correction and full-display sizing
+
+The former displacement cap and slope factor were about three times stronger, and RGB offsets were about ten times farther apart. Those exaggerated bends/fringes are reduced. Rim reflection is more restrained, with a soft highlight and a small opposing-edge exposure reduction to define the surface without laying down a solid color. Clear label dimming is lighter; Regular retains source-derived scattering but its fixed gray mix is removed. Accessibility Reduced Transparency still intentionally supplies stronger backing.
+
+Tint previously multiplied the selected amount by another 0.3 mix, making it unexpectedly weak. It now uses a Beer–Lambert-inspired per-channel transmission coefficient, calculated once per frame. Stronger tint attenuates complementary channels more; sampled background detail stays intact. A white tint is neutral, zero strength is explicitly off, and high-contrast mode bypasses tint. Swatches populate color and 18% strength in the form; Apply design commits the change. Typography, Material & tint, and Date are separate nested pages with one shared Apply action, preserving form values across those pages.
+
+Clock sizing no longer uses the old 1200×1000 catalog cap. A large serialization bound remains for malformed inputs, and runtime dimensions are constrained to the monitor work area. Initial host bounds are clamped before showing the window. Fill display sets that full work-area size with a 50/50 anchor; outside Edit Mode it commits immediately, and inside Edit Mode it remains undoable until Done. Actual render samples remain bounded for performance.
+
+62 contracts pass. Added cases validate 5120×2120 layout sizing, tint monotonicity/background preservation, and minimal chromatic separation of neutral source content. Windows appearance, full-display input behavior and end-to-end rendering performance still require Windows tests.

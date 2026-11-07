@@ -217,6 +217,19 @@ internal sealed class Dashboard : IDisposable
         try { SaveSettings(); } catch { Settings.Design = old; throw; }
         Render();
     }
+    public void FitClockToDisplay()
+    {
+        if (ReadOnly) throw new InvalidOperationException("Layout saving is disabled.");
+        bool editing = Editor.IsEditing; Editor.Enter();
+        foreach (var w in Editor.Current.Active.Widgets.Where(w => w.Type == "clock"))
+        {
+            var m = Geometry.Resolve(w.MonitorKey, Monitors);
+            var settings = new Dictionary<string, string>(w.Settings) { ["anchorX"] = "50", ["anchorY"] = "50" };
+            Editor.Update(w with { RectDip = Geometry.Clamp(new(0, 0, m.WidthDip, m.HeightDip), WidgetCatalog.Get("clock"), m), Settings = settings });
+        }
+        if (!editing) Editor.Done(store);
+        Render();
+    }
     public void SnapClock(double? horizontal, double? vertical)
     {
         if (ReadOnly) throw new InvalidOperationException("Layout saving is disabled.");

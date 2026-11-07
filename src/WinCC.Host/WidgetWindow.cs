@@ -39,7 +39,8 @@ internal sealed class WidgetWindow : Window, IDisposable
         this.dashboard = dashboard; this.widget = widget;
         FontSize = dashboard.Settings.WidgetFontSize;
         Title = "WinCC · " + WidgetCatalog.Get(widget.Type).Name;
-        Width = widget.RectDip.Width; Height = widget.RectDip.Height;
+        var initialRect = Geometry.Clamp(widget.RectDip, WidgetCatalog.Get(widget.Type), Geometry.Resolve(widget.MonitorKey, dashboard.Monitors));
+        Width = initialRect.Width; Height = initialRect.Height;
         ShowActivated = false; ShowInTaskbar = false;
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;

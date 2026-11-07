@@ -21,7 +21,7 @@ public static class WidgetCatalog
 {
     public static IReadOnlyList<WidgetSpec> All { get; } = Array.AsReadOnly(new WidgetSpec[]
     {
-        new("clock", "Clock", 200, 120, 280, 150),
+        new("clock", "Clock", 200, 120, 280, 150, 100000, 100000),
         new("calendar", "Calendar", 240, 260, 280, 300),
         new("notes", "Notes", 220, 180, 280, 230),
         new("system", "System", 220, 150, 280, 170),
