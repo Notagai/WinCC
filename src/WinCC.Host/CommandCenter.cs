@@ -11,6 +11,10 @@ namespace WinCC.Host;
 internal sealed class CommandCenter : Window
 {
     private readonly Dashboard dashboard;
+    private TrayIcon? tray;
+    private readonly TabControl tabs = new() { Background = System.Windows.Media.Brushes.Transparent, BorderThickness = new Thickness(0) };
+    private string selectedTab = "Clock";
+    private StackPanel panel = null!;
     internal bool AllowShutdown { get; set; }
     private readonly StackPanel content = new() { Margin = new Thickness(24) };
     private readonly DispatcherTimer topology = new() { Interval = TimeSpan.FromMilliseconds(350) };
@@ -18,13 +22,13 @@ internal sealed class CommandCenter : Window
     public CommandCenter(Dashboard dashboard)
     {
         this.dashboard = dashboard;
-        Title = "WinCC · Settings"; Width = 460; Height = 680; MinWidth = 360; MinHeight = 400;
+        Title = "WinCC · Settings"; Width = 860; Height = 760; MinWidth = 640; MinHeight = 480;
         WindowStyle = WindowStyle.None; AllowsTransparency = true; Background = System.Windows.Media.Brushes.Transparent;
-        Height = Math.Min(680, SystemParameters.WorkArea.Height * .85);
+        Height = Math.Min(760, SystemParameters.WorkArea.Height * .85);
         var shell = new DockPanel();
         var chrome = new DockPanel { Margin = new Thickness(16, 12, 16, 0) };
-        var close = new Button { Content = "×", Padding = new Thickness(10, 4, 10, 4), ToolTip = "Minimize Settings" };
-        close.Click += (_, _) => WindowState = WindowState.Minimized;
+        var close = new Button { Content = "×", Padding = new Thickness(10, 4, 10, 4), ToolTip = "Hide Settings" };
+        close.Click += (_, _) => Hide();
         DockPanel.SetDock(close, Dock.Right); chrome.Children.Add(close);
         var title = new TextBlock { Text = "Settings", FontSize = 16, VerticalAlignment = VerticalAlignment.Center };
         title.MouseLeftButtonDown += (_, _) => DragMove(); chrome.Children.Add(title);
@@ -37,20 +41,38 @@ internal sealed class CommandCenter : Window
             var handle = new WindowInteropHelper(this).Handle;
             BackdropCapture.Exclude(handle);
             HwndSource.FromHwnd(handle)?.AddHook(Hook);
+            tray = new TrayIcon(handle);
         };
-        Closing += (_, e) => { if (!AllowShutdown) { e.Cancel = true; WindowState = WindowState.Minimized; } };
+        Closing += (_, e) => { if (!AllowShutdown) { e.Cancel = true; Hide(); } };
         topology.Tick += (_, _) => { topology.Stop(); dashboard.DisplayChanged(); };
         Closed += (_, _) => topology.Stop(); Refresh();
     }
     private nint Hook(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
     {
+        if (message == TrayIcon.CallbackMessage)
+        {
+            int mouse = (int)lParam;
+            if (mouse is 0x0203 or 0x0202) ShowSettings();
+            if (mouse == 0x0205)
+            {
+                var menu = new ContextMenu { Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(28, 34, 44)), Foreground = System.Windows.Media.Brushes.White };
+                var open = new MenuItem { Header = "Settings" }; open.Click += (_, _) => ShowSettings(); menu.Items.Add(open);
+                var exit = new MenuItem { Header = "Exit WinCC" }; exit.Click += (_, _) => { if (dashboard.RequestExit()) { dashboard.Dispose(); Application.Current.Shutdown(); } }; menu.Items.Add(exit);
+                menu.IsOpen = true;
+            }
+        }
+        if ((uint)message == shellMessage) tray?.Restore();
         if (message is 0x007E or 0x02E0 || (uint)message == shellMessage) { topology.Stop(); topology.Start(); }
         return 0;
     }
+    public void DisposeTray() => tray?.Dispose();
+    public void ShowSettings() { Show(); WindowState = WindowState.Normal; Activate(); }
     public void RefreshStatus() { }
     public void Refresh()
     {
-        content.Children.Clear();
+        if (tabs.SelectedItem is TabItem previous) selectedTab = previous.Header.ToString() ?? "Clock";
+        tabs.Items.Clear(); content.Children.Clear();
+        panel = content;
         Heading("Settings");
         var mode = Row();
         if (dashboard.Editor.IsEditing)
@@ -81,6 +103,14 @@ internal sealed class CommandCenter : Window
                 foreach (var (display, i) in dashboard.Monitors.Select((m, i) => (m, i)))
                     Button(displays, "Display " + (i + 1), () => dashboard.MoveTo(w.Id, display.Key));
             }
+        }
+        var shape = Row(); Button(shape, "Glass lens", () => dashboard.ChangeClockShape(false)); Button(shape, "Time-shaped glass", () => dashboard.ChangeClockShape(true));
+        Heading("Presets");
+        for (int slot = 1; slot <= 3; slot++)
+        {
+            int captured = slot; var preset = Row();
+            Button(preset, "Save " + slot, () => dashboard.SavePreset(captured));
+            Button(preset, "Load " + slot, () => dashboard.LoadPreset(captured), dashboard.Presets.Exists(slot));
         }
         Heading("Frame rate · " + (dashboard.Settings.GlassFps == 0 ? "Uncapped" : dashboard.Settings.GlassFps + " FPS"));
         var rates = Row();
@@ -114,11 +144,21 @@ internal sealed class CommandCenter : Window
         Heading("WinCC");
         var app = Row(); Button(app, "Minimize", () => WindowState = WindowState.Minimized);
         Button(app, "Exit", () => { if (dashboard.RequestExit()) { dashboard.Dispose(); Application.Current.Shutdown(); } });
+        content.Children.Add(tabs);
         FontSize = dashboard.Settings.InterfaceFontSize;
     }
-    private void Heading(string title) => content.Children.Add(new TextBlock
-    { Text = title, FontSize = 20, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 18, 0, 10) });
-    private WrapPanel Row() { var row = new WrapPanel(); content.Children.Add(row); return row; }
+    private void Heading(string title)
+    {
+        string? section = title == "Clock" ? "Clock" : title.StartsWith("Frame rate") ? "Performance" : title == "Glass" ? "Appearance" : title == "Typeface" ? "Text" : title == "WinCC" ? "App" : null;
+        if (section is not null)
+        {
+            panel = new StackPanel { Margin = new Thickness(12) };
+            var tab = new TabItem { Header = section, Foreground = System.Windows.Media.Brushes.White, Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } };
+            tabs.Items.Add(tab); if (section == selectedTab) tabs.SelectedItem = tab;
+        }
+        panel.Children.Add(new TextBlock { Text = title, FontSize = 20, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 18, 0, 10) });
+    }
+    private WrapPanel Row() { var row = new WrapPanel(); panel.Children.Add(row); return row; }
     private void Button(Panel panel, string label, Action action, bool enabled = true)
     {
         var button = new Button { Content = label, IsEnabled = enabled };

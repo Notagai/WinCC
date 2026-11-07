@@ -12,7 +12,7 @@ dotnet build WinCC.sln -c Release
 dotnet run --project src/WinCC.Host -c Release
 ```
 
-Settings contains headings and controls for clock editing, time format, display, typeface and text size. Closing Settings minimizes it; Exit quits WinCC. In Edit Mode, drag the header or resize with the bottom handle. Done saves and Cancel discards the draft. Content scales with the clock. Wallpaper Engine runs independently.
+Settings contains headings and controls for clock editing, time format, display, typeface and text size. Closing Settings hides it while the clock keeps running. Click the WinCC tray clock to reopen Settings; the tray menu also has Exit. In Edit Mode, drag the header or resize with the bottom handle. Done saves and Cancel discards the draft. Content scales with the clock. Wallpaper Engine runs independently.
 
 Only the clock is active. Older widget layouts and notes remain on disk for recovery; the removed widgets are not rendered or offered in Settings. A blank saved canvas remains valid; use Edit clock → Add clock.
 
@@ -26,8 +26,12 @@ This is a custom CPU optical renderer, not Apple's proprietary implementation. I
 
 ## Validation
 
-The Release build passes and **53 contracts pass**, including tests that actual background samples are displaced, the centre stays clear, rounded corners have an alpha mask, and changing the background changes the optical output. Windows live capture, compositing, performance and visual acceptance are **NOT RUN** in this Linux environment. Compilation and optical tests do not certify Apple-like visual quality.
+The Release build passes and **55 contracts pass**, including tests that actual background samples are displaced, the centre stays clear, rounded corners have an alpha mask, and changing the background changes the optical output. Windows live capture, compositing, performance and visual acceptance are **NOT RUN** in this Linux environment. Compilation and optical tests do not certify Apple-like visual quality.
 
 See [Apple research and implementation mapping](docs/APPLE-LIQUID-GLASS-RESEARCH.md), [glass implementation notes](docs/GLASS.md), [development](docs/DEVELOPMENT.md), and [agent instructions](AGENTS.md).
 
 The lens is rigid and rounded, matching the supplied glass reference. Its floating feel comes from depth, refraction and interactive lighting; its outline no longer wobbles. Rigid geometry is cached, native clipping changes only with size/DPI, and edge pixels blend with the actual background rather than black. Settings → Frame rate changes apply live without recreating the clock. Uncapped removes the application frame delay; capture, CPU rendering and the WPF compositor still determine actual output FPS.
+
+Settings now has larger, custom tabs for Clock, Performance, Appearance, Text and App. Right-click the clock → Move / resize clock to reveal drag/resize handles; Save layout commits the result. The Clock tab switches between the full lens and Time-shaped glass. In time-shaped mode, actual font glyph masks drive refraction along the digits and a separate date sits below.
+
+Three layout preset slots save positions, sizes and per-clock format settings. Saving captures the current draft; loading commits that preset as the active layout. Global appearance/FPS settings remain app-wide. Existing preset slots require replacement confirmation. Presets live in `%LOCALAPPDATA%\WinCC\presets`.

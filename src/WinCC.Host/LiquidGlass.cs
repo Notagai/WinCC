@@ -12,6 +12,27 @@ namespace WinCC.Host;
 internal sealed class LiquidGlass : Decorator, IDisposable
 {
     public event Action<double>? BackgroundLuminance;
+    public bool TimeShaped { get; init; }
+    private string glyphText = "00:00";
+    private byte[]? glyphMask;
+    private (int Width, int Height) glyphSize;
+    public string GlyphText { get => glyphText; set { if (glyphText != value) { glyphText = value; glyphMask = null; generation++; } } }
+    private byte[]? GetMask(int width, int height)
+    {
+        if (!TimeShaped) return null;
+        if (glyphMask is not null && glyphSize == (width, height)) return glyphMask;
+        var typeface = new Typeface((FontFamily)FindResource("DesktopFont"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
+        var text = new FormattedText(glyphText, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeface, height * .58, Brushes.White, 1);
+        var outline = text.BuildGeometry(new Point()); var bounds = outline.Bounds;
+        double scale = Math.Min(width * .88 / Math.Max(1, bounds.Width), height * .55 / Math.Max(1, bounds.Height));
+        outline.Transform = new MatrixTransform(scale, 0, 0, scale, width * .5 - (bounds.X + bounds.Width * .5) * scale,
+            height * .37 - (bounds.Y + bounds.Height * .5) * scale);
+        var visual = new DrawingVisual(); using (var dc = visual.RenderOpen()) dc.DrawGeometry(Brushes.White, null, outline);
+        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32); bitmap.Render(visual);
+        var pixels = new byte[width * height * 4]; bitmap.CopyPixels(pixels, width * 4, 0);
+        glyphMask = new byte[width * height]; for (int i = 0; i < glyphMask.Length; i++) glyphMask[i] = pixels[i * 4 + 3];
+        glyphSize = (width, height); return glyphMask;
+    }
     public bool ClearVariant { get; init; } = true;
     public bool ReduceTransparency { get; init; }
     public bool ReduceMotion { get; init; }
@@ -77,6 +98,7 @@ internal sealed class LiquidGlass : Decorator, IDisposable
         double ratio = Math.Min(1, 640 / Math.Max(physicalWidth, physicalHeight));
         int width = Math.Max(2, (int)(physicalWidth * ratio)), height = Math.Max(2, (int)(physicalHeight * ratio));
         int left = (int)Math.Floor(origin.X - physicalWidth * .125), top = (int)Math.Floor(origin.Y - physicalHeight * .125);
+        var mask = GetMask(width, height);
         busy = true;
         try
         {
@@ -86,7 +108,7 @@ internal sealed class LiquidGlass : Decorator, IDisposable
                     (int)Math.Ceiling(physicalHeight * 1.25), Math.Max(2, (int)(width * 1.25)), Math.Max(2, (int)(height * 1.25)), capturePixels);
                 capturePixels = captured.Pixels;
                 if (opticalPixels is null || opticalPixels.Length != width * height * 4) opticalPixels = new byte[width * height * 4];
-                var pixels = GlassOptics.Render(captured.Pixels, captured.Width, captured.Height, width, height, emerge, appearance, opticalPixels);
+                var pixels = GlassOptics.Render(captured.Pixels, captured.Width, captured.Height, width, height, emerge, appearance, opticalPixels, mask);
                 var bitmap = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, width * 4);
                 bitmap.Freeze();
                 double luminance = 0; int samples = 0;

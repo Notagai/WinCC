@@ -13,6 +13,7 @@ public sealed class UserSettings
     public double InterfaceFontSize { get; set; } = 18;
     public double WidgetFontSize { get; set; } = 18;
     public string FontFamily { get; set; } = "Lato";
+    public bool TimeShapedGlass { get; set; }
     public int GlassFps { get; set; } = 60;
     public string GlassVariant { get; set; } = "Clear";
     public bool ReduceGlassTransparency { get; set; }
@@ -186,6 +187,26 @@ internal sealed class Dashboard : IDisposable
     }
     private void ApplyFont() => Application.Current.Resources["DesktopFont"] =
         new System.Windows.Media.FontFamily("/WinCC;component/Assets/Fonts/#" + (Settings.FontFamily == "VT323" ? "VT323" : "Lato"));
+    public PresetStore Presets { get; } = new(Path.Combine(Paths.Data, "presets"));
+    public void SavePreset(int slot)
+    {
+        if (Presets.Exists(slot) && MessageBox.Show(Center, "Replace this preset?", "WinCC", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+        Presets.Save(slot, Editor.Current); Center.Refresh();
+    }
+    public void LoadPreset(int slot)
+    {
+        if (Editor.IsDirty && MessageBox.Show(Center, "Replace the unsaved layout draft?", "WinCC", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+        var preset = Presets.Load(slot);
+        Editor.Enter(); Editor.Change(d => { d.Active.Widgets.Clear(); d.Active.Widgets.AddRange(preset.Active.Widgets.Where(w => w.Type == "clock")); });
+        Editor.Done(store); Render();
+    }
+    public void ChangeClockShape(bool shaped)
+    {
+        if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
+        bool old = Settings.TimeShapedGlass; Settings.TimeShapedGlass = shaped;
+        try { SaveSettings(); } catch { Settings.TimeShapedGlass = old; throw; }
+        Render();
+    }
     public void ChangeFrameRate(int fps)
     {
         if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
@@ -283,6 +304,7 @@ internal sealed class Dashboard : IDisposable
     {
         if (disposing) return; disposing = true;
         Center.AllowShutdown = true;
+        Center.DisposeTray();
         lifecycle.Stop();
         foreach (var window in windows) window.Dispose();
         windows.Clear();

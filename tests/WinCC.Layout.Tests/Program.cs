@@ -428,6 +428,37 @@ try
         Throws<ArgumentException>(() => GlassOptics.Render(source, 200, 150, 160, 120, 1, null, new byte[8]));
     });
 
+    Test("Three preset slots persist independent layouts and reject extra slots", () =>
+    {
+        var presets = new PresetStore(Path.Combine(root, "presets"));
+        Check(!presets.Exists(1));
+        presets.Save(1, WithClock()); presets.Save(2, LayoutDocument.Empty());
+        var third = WithClock(); third.Active.Widgets[0] = Clock() with { RectDip = new(120, 80, 360, 200) };
+        presets.Save(3, third);
+        Check(new PresetStore(Path.Combine(root, "presets")).Load(3).Active.Widgets[0].RectDip.Width == 360);
+        Check(presets.Load(1).Active.Widgets.Count == 1 && presets.Load(2).Active.Widgets.Count == 0);
+        Throws<ArgumentOutOfRangeException>(() => presets.Save(4, WithClock()));
+        Throws<ArgumentOutOfRangeException>(() => presets.Load(0));
+        File.WriteAllText(Path.Combine(root, "presets", "preset-2.json"), "corrupt");
+        Throws<IOException>(() => presets.Load(2));
+        Check(File.ReadAllText(Path.Combine(root, "presets", "preset-2.json")) == "corrupt");
+    });
+    Test("Time-shaped mask refracts along digit edges and leaves holes clear", () =>
+    {
+        const int width = 80, height = 60;
+        var mask = new byte[width * height];
+        for (int y = 10; y < 40; y++) for (int x = 20; x < 50; x++)
+            if (x < 26 || x > 43 || y < 16 || y > 33) mask[y * width + x] = 255;
+        var source = Enumerable.Repeat((byte)180, 100 * 75 * 4).ToArray();
+        var pixels = GlassOptics.Render(source, 100, 75, width, height, 1, new GlassAppearance(), shapeMask: mask);
+        Check(pixels[(20 * width + 22) * 4 + 3] == 255);
+        Check(pixels[(25 * width + 35) * 4 + 3] == 0);
+        Check(pixels[3] == 0);
+        mask = (byte[])mask.Clone(); Array.Clear(mask);
+        var blank = GlassOptics.Render(source, 100, 75, width, height, 1, new GlassAppearance(), shapeMask: mask);
+        Check(blank.All(v => v == 0));
+    });
+
 }
 finally { Directory.Delete(root, recursive: true); }
 Console.WriteLine($"{passed} passed, {failed} failed; Windows UI/native checks NOT RUN.");

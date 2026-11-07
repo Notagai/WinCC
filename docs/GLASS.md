@@ -54,3 +54,13 @@ A Linux CPU-only comparison used the previous renderer from commit `f63ecd7` (Or
 This excludes Windows GDI capture, bitmap creation, UI dispatch and display presentation, and does not claim end-to-end Windows FPS. Timings varied across runs. Buffer reuse in the host reduces large managed allocations; those savings are also outside this comparison.
 
 53 contracts pass. New cases cover frame deadlines, uncapped zero delay, overruns without extra sleeps, fixed silhouettes under lighting changes, cache correctness and reusable output buffers. Windows smoothness, capture, actual FPS and final edge quality remain unverified.
+
+## Time-shaped glass, presets and tray lifecycle
+
+Clock mode can use the actual formatted time's glyphs as a material mask. WPF converts the selected bundled typeface into a glyph outline; the outline is rasterized only when time/font/size changes. A cached two-pass distance transform produces per-glyph normals and refractive edges, including counters (holes in digits). Unmodified background is retained outside the glass glyphs to avoid black fill in the opaque host. The date is drawn separately below. This mode changes the optical material contour, not merely a white text overlay. The native hit region remains a rounded clock-sized area so movement/editing remains reachable.
+
+Settings has custom tab templates in a larger window. Close/X/Alt+F4/taskbar close hide Settings without destroying its HWND or the dashboard. An app-drawn clock tray icon reopens Settings and exposes an Exit action. TaskbarCreated re-adds the icon after Explorer restarts; explicit Exit/session shutdown removes it. Failure to register the icon is surfaced instead of leaving a hidden app with no reopening path. Native tray behavior still needs Windows validation.
+
+There are exactly three atomic layout preset files. Saving captures current geometry and clock format; global appearance/FPS preferences remain app-wide. Load asks before replacing an unsaved draft, validates the preset before mutation, then commits through the main layout store. Corrupt/future presets are preserved and rejected. Preset tests exercise slots, restart persistence, invalid slot rejection and corrupt data preservation.
+
+Current build: zero warnings/errors; 55 contracts pass. The new cases cover preset persistence and glyph material masks. WPF glyph extraction, native tray/taskbar-close behavior, drag/resize UI and the visual date composition remain NOT RUN on Windows in this Linux task.

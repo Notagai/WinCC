@@ -50,7 +50,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             Child = new Border { Padding = new Thickness(18), Child = grid }
         };
-        card = new LiquidGlass { Material = widget.Type, Child = viewport, ClearVariant = dashboard.Settings.GlassVariant != "Regular", ReduceMotion = dashboard.Settings.ReduceGlassMotion, ReduceTransparency = dashboard.Settings.ReduceGlassTransparency, FrameRate = dashboard.Settings.GlassFps };
+        card = new LiquidGlass { Material = widget.Type, Child = viewport, ClearVariant = dashboard.Settings.GlassVariant != "Regular", ReduceMotion = dashboard.Settings.ReduceGlassMotion, ReduceTransparency = dashboard.Settings.ReduceGlassTransparency, FrameRate = dashboard.Settings.GlassFps, TimeShaped = dashboard.Settings.TimeShapedGlass };
         bool darkText = false;
         card.BackgroundLuminance += luminance =>
         {
@@ -61,6 +61,15 @@ internal sealed class WidgetWindow : Window, IDisposable
             foreach (var text in new[] { live, dateLine })
                 if (text.Effect is System.Windows.Media.Effects.DropShadowEffect shadow) shadow.Color = darkText ? Colors.White : Colors.Black;
         };
+        var menu = new ContextMenu { Background = new SolidColorBrush(Color.FromRgb(28, 34, 44)), Foreground = Brushes.White };
+        if (dashboard.Editor.IsEditing)
+        {
+            var done = new MenuItem { Header = "Save layout" }; done.Click += (_, _) => dashboard.Action(dashboard.Done); menu.Items.Add(done);
+            var cancel = new MenuItem { Header = "Cancel editing" }; cancel.Click += (_, _) => dashboard.Action(dashboard.Cancel); menu.Items.Add(cancel);
+        }
+        var edit = new MenuItem { Header = "Move / resize clock" }; edit.Click += (_, _) => dashboard.Action(dashboard.Enter); menu.Items.Add(edit);
+        var settingsItem = new MenuItem { Header = "Settings" }; settingsItem.Click += (_, _) => dashboard.Center.ShowSettings(); menu.Items.Add(settingsItem);
+        ContextMenu = menu;
         Content = card;
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -84,7 +93,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             if (disposed) return;
             e.Cancel = true;
-            dashboard.Center.Show(); dashboard.Center.Activate();
+            dashboard.Center.ShowSettings();
             dashboard.Notify("Use Remove in Edit Mode to remove a widget, or Exit WinCC to close everything.");
         };
     }
@@ -210,7 +219,9 @@ internal sealed class WidgetWindow : Window, IDisposable
 
     private void BuildContent(Grid body)
     {
-        var clock = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        var clock = new StackPanel { VerticalAlignment = dashboard.Settings.TimeShapedGlass ? VerticalAlignment.Bottom : VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        live.Visibility = dashboard.Settings.TimeShapedGlass ? Visibility.Collapsed : Visibility.Visible;
+        dateLine.FontSize = dashboard.Settings.TimeShapedGlass ? 11 : 13;
         live.FontSize = 44; live.FontWeight = FontWeights.SemiBold; live.TextAlignment = TextAlignment.Center;
         dateLine.TextAlignment = TextAlignment.Center;
         live.Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 5, ShadowDepth = 1, Opacity = .65 };
@@ -223,6 +234,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         string format = widget.Settings.GetValueOrDefault("hourFormat", "system") switch
         { "12" => "h:mm tt", "24" => "HH:mm", _ => "t" };
         live.Text = DateTime.Now.ToString(format, CultureInfo.CurrentCulture);
+        card.GlyphText = live.Text;
         dateLine.Text = DateTime.Today.ToString("dddd, MMMM d", CultureInfo.CurrentCulture);
     }
     public void Dispose()
