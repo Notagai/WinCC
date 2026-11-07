@@ -8,6 +8,8 @@ WinCC defaults to Lato Regular/Bold for a clean desktop appearance. VT323 Regula
 
 WPF cannot load a CSS stylesheet as a font. The equivalent TTF files are embedded as resources, with the included SIL Open Font License. No font request is made when starting the app.
 
+The Design font dropdowns also offer Space Mono, Share Tech Mono, Rajdhani and Bungee through **Get Google font**. Their regular TTF and OFL files are downloaded from `raw.githubusercontent.com/google/fonts/main/ofl` into `%LOCALAPPDATA%\WinCC\fonts`, then loaded locally without installing system fonts. Select **Apply design** after downloading. Installed fonts remain available offline.
+
 ## VT323
 
 - Google Fonts: https://fonts.google.com/specimen/VT323

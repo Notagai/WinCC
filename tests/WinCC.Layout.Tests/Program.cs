@@ -533,6 +533,25 @@ try
             if(output[i+3]==255) Check(Math.Abs(output[i]-output[i+2])<=2);
     });
 
+    Test("Google font metadata selects normal regular and rejects unsafe paths", () =>
+    {
+        string metadata = "fonts { style: \"italic\" weight: 400 filename: \"Family-Italic.ttf\" } fonts { style: \"normal\" weight: 400 filename: \"Family-Regular.ttf\" }";
+        Check(GoogleFontMetadata.FileName(metadata) == "Family-Regular.ttf");
+        Throws<InvalidDataException>(() => GoogleFontMetadata.FileName("fonts { filename: \"../escape.ttf\" }"));
+        Throws<InvalidDataException>(() => GoogleFontMetadata.FileName("fonts { filename: \"https://example.com/font.ttf\" }"));
+        Throws<InvalidDataException>(() => GoogleFontMetadata.FileName("not font metadata"));
+    });
+
+    Test("Glyph distances are radial rather than eight-direction chamfer facets", () =>
+    {
+        var mask = new byte[11*11]; mask[5*11+5]=255;
+        var d = GlyphDistance.Build(mask,11,11);
+        Check(Math.Abs(d[6*11+8] - (Math.Sqrt(10)-.5)) < .00001);
+        Check(Math.Abs(d[8*11+6] - d[6*11+8]) < .00001);
+        Check(d[5*11+5] < 0);
+        Throws<ArgumentException>(() => GlyphDistance.Build(new byte[3],11,11));
+    });
+
 }
 finally { Directory.Delete(root, recursive: true); }
 Console.WriteLine($"{passed} passed, {failed} failed; Windows UI/native checks NOT RUN.");

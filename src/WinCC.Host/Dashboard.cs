@@ -33,7 +33,6 @@ internal sealed class Dashboard : IDisposable
 {
     private readonly LayoutStore store = new(Path.Combine(Paths.Data, "layout.json"));
     private readonly List<WidgetWindow> windows = [];
-    private readonly DispatcherTimer lifecycle = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly string settingsFile = Path.Combine(Paths.Data, "settings.json");
     private bool disposing;
     private bool stacking, stackPending;
@@ -76,11 +75,10 @@ internal sealed class Dashboard : IDisposable
         ApplyFont();
         RefreshMonitors();
         Center = new(this);
-        lifecycle.Tick += (_, _) => CheckLifecycle();
     }
     public void Start()
     {
-        Center.Show(); Render(); lifecycle.Start();
+        Center.Show(); Render();
     }
     public void Action(Action action)
     {
@@ -120,6 +118,7 @@ internal sealed class Dashboard : IDisposable
     }
     public void Render()
     {
+        if (ScreenshotMode) SetScreenshotMode(false);
         foreach (var window in windows) window.Dispose();
         windows.Clear();
         foreach (var widget in Editor.Current.Active.Widgets.Where(w => w.Type == "clock").OrderByDescending(w => w.ZIndex))
@@ -247,6 +246,13 @@ internal sealed class Dashboard : IDisposable
         if (!wasEditing) Editor.Done(store);
         Render();
     }
+    public bool ScreenshotMode { get; private set; }
+    public void SetScreenshotMode(bool enabled)
+    {
+        foreach (var window in windows) window.SetScreenshotMode(enabled);
+        BackdropCapture.Exclude(new System.Windows.Interop.WindowInteropHelper(Center).Handle, !enabled);
+        ScreenshotMode = enabled; Center.Refresh();
+    }
     public void ChangeFrameRate(int fps)
     {
         if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
@@ -331,21 +337,11 @@ internal sealed class Dashboard : IDisposable
             finally { stacking = false; }
         }));
     }
-    private void CheckLifecycle()
-    {
-        foreach (var window in windows)
-        {
-            bool hidden = !Windowed && Desktop.IsForegroundFullscreen(window.Handle);
-            if (hidden && window.IsVisible) window.Hide();
-            else if (!hidden && !window.IsVisible) { window.Show(); window.ApplyPlacement(); }
-        }
-    }
     public void Dispose()
     {
         if (disposing) return; disposing = true;
         Center.AllowShutdown = true;
         Center.DisposeTray();
-        lifecycle.Stop();
         foreach (var window in windows) window.Dispose();
         windows.Clear();
     }

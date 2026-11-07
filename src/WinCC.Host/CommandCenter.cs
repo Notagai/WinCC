@@ -57,6 +57,8 @@ internal sealed class CommandCenter : Window
             {
                 var menu = new ContextMenu { Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(28, 34, 44)), Foreground = System.Windows.Media.Brushes.White };
                 var open = new MenuItem { Header = "Settings" }; open.Click += (_, _) => ShowSettings(); menu.Items.Add(open);
+                var capture = new MenuItem { Header = dashboard.ScreenshotMode ? "Resume live glass" : "Screenshot mode" };
+                capture.Click += (_, _) => dashboard.Action(() => dashboard.SetScreenshotMode(!dashboard.ScreenshotMode)); menu.Items.Add(capture);
                 var exit = new MenuItem { Header = "Exit WinCC" }; exit.Click += (_, _) => { if (dashboard.RequestExit()) { dashboard.Dispose(); Application.Current.Shutdown(); } }; menu.Items.Add(exit);
                 menu.IsOpen = true;
             }
@@ -157,6 +159,8 @@ internal sealed class CommandCenter : Window
         foreach (double size in new double[] { 14, 18, 24 })
             Button(interfaceSizes, size.ToString(), () => dashboard.ChangeFontSizes(size, dashboard.Settings.WidgetFontSize));
         Heading("WinCC");
+        var captureActions = Row();
+        Button(captureActions, dashboard.ScreenshotMode ? "Resume live glass" : "Screenshot mode", () => dashboard.SetScreenshotMode(!dashboard.ScreenshotMode));
         var app = Row(); Button(app, "Minimize", () => WindowState = WindowState.Minimized);
         Button(app, "Exit", () => { if (dashboard.RequestExit()) { dashboard.Dispose(); Application.Current.Shutdown(); } });
         content.Children.Add(tabs);
@@ -182,8 +186,28 @@ internal sealed class CommandCenter : Window
             System.Windows.Automation.AutomationProperties.SetName(field, label); row.Children.Add(field); return field;
         }
         string N(double value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        ComboBox FontField(string label, string value)
+        {
+            var row = Row(); row.Children.Add(new TextBlock { Text = label, Width = 220, VerticalAlignment = VerticalAlignment.Center });
+            var picker = new ComboBox { ItemsSource = FontLibrary.Names, Text = value, IsEditable = true, IsTextSearchEnabled = true, Width = 240, MaxDropDownHeight = 320 };
+            var option = new DataTemplate();
+            var text = new FrameworkElementFactory(typeof(TextBlock)); text.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding());
+            text.SetValue(TextBlock.ForegroundProperty, System.Windows.Media.Brushes.Black); option.VisualTree = text;
+            picker.ItemTemplate = option;
+            System.Windows.Automation.AutomationProperties.SetName(picker, label); row.Children.Add(picker);
+            var download = new Button { Content = "Get Google font" }; row.Children.Add(download);
+            download.Click += async (_, _) =>
+            {
+                download.IsEnabled = false;
+                try { await FontLibrary.Download(picker.Text.Trim()); download.Content = "Downloaded"; }
+                catch (Exception error) when (error is System.IO.IOException or System.Net.Http.HttpRequestException or InvalidOperationException or TaskCanceledException or UnauthorizedAccessException)
+                { MessageBox.Show(this, error.Message, "Google Fonts"); }
+                finally { download.IsEnabled = true; }
+            };
+            return picker;
+        }
         Group("Typography");
-        var font = Field("Glass font", d.Font); var weight = Field("Weight · 100–900", N(d.Weight));
+        var font = FontField("Glass font", d.Font); var weight = Field("Weight · 100–900", N(d.Weight));
         var size = Field("Size · 25–200%", N(d.SizePercent));
         var sx = Field("Horizontal stretch · 0.4–2.5", N(d.StretchX)); var sy = Field("Vertical stretch · 0.4–2.5", N(d.StretchY));
         var tracking = Field("Letter spacing · −4–20", N(d.Tracking)); var stroke = Field("Stroke thickness · 0–8", N(d.Stroke));
@@ -198,7 +222,7 @@ internal sealed class CommandCenter : Window
             Button(swatches, choice.Item1, () => { tint.Text = choice.Item2; amount.Text = "18"; });
         Button(swatches, "Tint off", () => amount.Text = "0");
         Group("Date");
-        var dateFormat = Field("Date format", d.DateFormat); var dateFont = Field("Date font", d.DateFont);
+        var dateFormat = Field("Date format", d.DateFormat); var dateFont = FontField("Date font", d.DateFont);
         var dateSize = Field("Date size · 8–40", N(d.DateSize)); var dateLift = Field("Date lift · 0–25", N(d.DateLift));
         var dateColor = Field("Date color · #RRGGBB", d.DateColor);
         var dateToggle = new Button { Content = show ? "Date shown" : "Date hidden" }; dateToggle.Click += (_, _) => { show = !show; dateToggle.Content = show ? "Date shown" : "Date hidden"; }; Row().Children.Add(dateToggle);

@@ -13,7 +13,7 @@ internal sealed class LiquidGlass : Decorator, IDisposable
 {
     public event Action<double>? BackgroundLuminance;
     public ClockDesign Design { get; init; } = new();
-    private static FontFamily ResolveFont(string name) => new(name is "Lato" or "VT323" ? "/WinCC;component/Assets/Fonts/#" + name : name);
+    private static FontFamily ResolveFont(string name) => FontLibrary.Resolve(name);
     public bool TimeShaped { get; init; }
     private string glyphText = "00:00";
     private byte[]? glyphMask;
@@ -55,7 +55,13 @@ internal sealed class LiquidGlass : Decorator, IDisposable
     private readonly DispatcherTimer timer = new(DispatcherPriority.Background);
     private int frameRate = 60;
     private double frameStarted, previousFrame;
-    private bool active;
+    private bool active, suspended;
+    public bool HasFrame => frame is not null;
+    public void SuspendSampling(bool suspend)
+    {
+        suspended = suspend; generation++; timer.Stop();
+        if (!suspend && active && !busy) Refresh();
+    }
     public int FrameRate
     {
         get => frameRate;
@@ -84,14 +90,14 @@ internal sealed class LiquidGlass : Decorator, IDisposable
     public void EnableCapture(bool ready) => captureReady = ready;
     private void Schedule(TimeSpan delay)
     {
-        if (disposed || !active || !captureReady || !IsVisible) return;
+        if (disposed || suspended || !active || !captureReady || !IsVisible) return;
         timer.Interval = delay; timer.Start();
     }
     private async void Refresh()
     {
         timer.Stop();
         var window = Window.GetWindow(this);
-        if (disposed || !active || busy || !captureReady || !IsVisible) return;
+        if (disposed || suspended || !active || busy || !captureReady || !IsVisible) return;
         if (window?.WindowState == WindowState.Minimized || ActualWidth < 2 || ActualHeight < 2)
         { Schedule(TimeSpan.FromMilliseconds(200)); return; }
         frameStarted = age.Elapsed.TotalSeconds;
@@ -139,6 +145,7 @@ internal sealed class LiquidGlass : Decorator, IDisposable
         }
         catch (Exception error) when (error is System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException)
         {
+            if (disposed || version != generation) return;
             frame = null; InvalidateVisual();
             captureReady = false; timer.Stop(); // Do not display stale samples or silently pretend capture succeeded.
             Log.Write("glass.capture_failed", error.GetType().Name);

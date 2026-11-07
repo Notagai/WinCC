@@ -25,7 +25,7 @@ public static class BackdropCapture
     }
     [StructLayout(LayoutKind.Sequential)] private struct NativePoint { public int X, Y; }
     [DllImport("gdi32.dll")] private static extern nint CreatePolygonRgn([In] NativePoint[] points, int count, int mode);
-    public static bool Exclude(nint window) => SetWindowDisplayAffinity(window, 0x11);
+    public static bool Exclude(nint window, bool excluded = true) => SetWindowDisplayAffinity(window, excluded ? 0x11u : 0u);
     public static BackdropFrame Read(int left, int top, int width, int height, int outputWidth, int outputHeight, byte[]? reusablePixels = null)
     {
         if (width <= 0 || height <= 0 || outputWidth is < 1 or > 1024 || outputHeight is < 1 or > 1024)

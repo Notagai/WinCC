@@ -135,6 +135,17 @@ internal sealed class WidgetWindow : Window, IDisposable
         finally { placing = false; }
     }
 
+    public void SetScreenshotMode(bool enabled)
+    {
+        if (enabled && !card.HasFrame) throw new InvalidOperationException("Wait for the first glass frame before enabling screenshot mode.");
+        if (enabled) card.SuspendSampling(true);
+        if (!BackdropCapture.Exclude(Handle, !enabled))
+        {
+            if (enabled) card.SuspendSampling(false);
+            throw new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error());
+        }
+        if (!enabled) card.SuspendSampling(false);
+    }
     public void SetFrameRate(int fps) => card.FrameRate = fps;
 
     private void BuildHandles()
@@ -242,7 +253,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         var design = dashboard.Settings.Design;
         dateLine.Visibility = design.ShowDate ? Visibility.Visible : Visibility.Collapsed;
         dateLine.FontSize = design.DateSize;
-        dateLine.FontFamily = new FontFamily(design.DateFont is "Lato" or "VT323" ? "/WinCC;component/Assets/Fonts/#" + design.DateFont : design.DateFont);
+        dateLine.FontFamily = FontLibrary.Resolve(design.DateFont);
         dateLine.Foreground = (Brush)new BrushConverter().ConvertFromString(design.DateColor)!;
         dateLine.RenderTransform = new TranslateTransform(0, -design.DateLift);
         live.FontSize = 44; live.FontWeight = FontWeights.SemiBold; live.TextAlignment = TextAlignment.Center;
