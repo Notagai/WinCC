@@ -12,6 +12,11 @@ namespace WinCC.Host;
 internal sealed class LiquidGlass : Decorator, IDisposable
 {
     public event Action<double>? BackgroundLuminance;
+    public bool ClearVariant { get; init; } = true;
+    public bool ReduceTransparency { get; init; }
+    public bool ReduceMotion { get; init; }
+    private double interaction, targetInteraction, lightX = -.65, lightY = -.75, targetX = -.65, targetY = -.75;
+    private readonly System.Diagnostics.Stopwatch age = System.Diagnostics.Stopwatch.StartNew();
     public string Material { get; set; } = "clock";
     private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private BitmapSource? frame;
@@ -23,12 +28,26 @@ internal sealed class LiquidGlass : Decorator, IDisposable
         Unloaded += (_, _) => { timer.Stop(); generation++; frame = null; };
         SizeChanged += (_, _) => { generation++; frame = null; InvalidateVisual(); };
         timer.Tick += (_, _) => Refresh();
+        MouseMove += (_, e) =>
+        {
+            var point = e.GetPosition(this);
+            targetX = (point.X / Math.Max(1, ActualWidth) - .5) * 1.5;
+            targetY = (point.Y / Math.Max(1, ActualHeight) - .5) * 1.5;
+            targetInteraction = 1;
+        };
+        MouseLeave += (_, _) => { targetInteraction = 0; targetX = -.65; targetY = -.75; };
     }
     public void EnableCapture(bool ready) => captureReady = ready;
     private async void Refresh()
     {
         var window = Window.GetWindow(this);
         if (disposed || busy || !captureReady || !IsVisible || window?.WindowState == WindowState.Minimized || ActualWidth < 2 || ActualHeight < 2) return;
+        bool reduced = ReduceMotion || !SystemParameters.ClientAreaAnimation;
+        interaction += ((reduced ? 0 : targetInteraction) - interaction) * .3;
+        lightX += ((reduced ? -.65 : targetX) - lightX) * .25;
+        lightY += ((reduced ? -.75 : targetY) - lightY) * .25;
+        double emerge = reduced ? 1 : 1 - Math.Exp(-age.Elapsed.TotalSeconds * 5);
+        var appearance = new GlassAppearance(ClearVariant, Math.Clamp(ActualWidth / 280, .1, 10), interaction, lightX, lightY, SystemParameters.HighContrast, ReduceTransparency);
         int version = generation;
         var origin = PointToScreen(new Point(0, 0));
         var dpi = VisualTreeHelper.GetDpi(this);
@@ -43,7 +62,7 @@ internal sealed class LiquidGlass : Decorator, IDisposable
             {
                 var captured = BackdropCapture.Read(left, top, (int)Math.Ceiling(physicalWidth * 1.25),
                     (int)Math.Ceiling(physicalHeight * 1.25), Math.Max(2, (int)(width * 1.25)), Math.Max(2, (int)(height * 1.25)));
-                var pixels = GlassOptics.Render(captured.Pixels, captured.Width, captured.Height, width, height);
+                var pixels = GlassOptics.Render(captured.Pixels, captured.Width, captured.Height, width, height, emerge, appearance);
                 var bitmap = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, width * 4);
                 bitmap.Freeze();
                 double luminance = 0; int samples = 0;
@@ -65,7 +84,7 @@ internal sealed class LiquidGlass : Decorator, IDisposable
             timer.Stop(); // Do not display stale samples or silently pretend capture succeeded.
             Log.Write("glass.capture_failed", error.GetType().Name);
             window?.Dispatcher.BeginInvoke(new Action(() => MessageBox.Show(window,
-                "Live glass capture is unavailable. The clock will remain clear. Restart WinCC to retry.", "WinCC")));
+                "Live glass capture is unavailable. Refraction is disabled; the clock will keep running. Restart WinCC to retry.", "WinCC")));
         }
         finally { busy = false; }
     }

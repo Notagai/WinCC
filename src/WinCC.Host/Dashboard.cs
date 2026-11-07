@@ -13,6 +13,9 @@ public sealed class UserSettings
     public double InterfaceFontSize { get; set; } = 18;
     public double WidgetFontSize { get; set; } = 18;
     public string FontFamily { get; set; } = "Lato";
+    public string GlassVariant { get; set; } = "Clear";
+    public bool ReduceGlassTransparency { get; set; }
+    public bool ReduceGlassMotion { get; set; }
     public string Theme { get; set; } = "Winter Glass";
     public List<string> Launchers { get; set; } = [];
     public bool WeatherEnabled { get; set; }
@@ -182,6 +185,16 @@ internal sealed class Dashboard : IDisposable
     }
     private void ApplyFont() => Application.Current.Resources["DesktopFont"] =
         new System.Windows.Media.FontFamily("/WinCC;component/Assets/Fonts/#" + (Settings.FontFamily == "VT323" ? "VT323" : "Lato"));
+    public void ChangeGlass(string variant, bool reduceMotion, bool? reduceTransparency = null)
+    {
+        if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
+        if (variant is not ("Clear" or "Regular")) throw new InvalidOperationException("Unknown glass variant.");
+        var oldVariant = Settings.GlassVariant; bool oldMotion = Settings.ReduceGlassMotion, oldTransparency = Settings.ReduceGlassTransparency;
+        Settings.GlassVariant = variant; Settings.ReduceGlassMotion = reduceMotion;
+        Settings.ReduceGlassTransparency = reduceTransparency ?? oldTransparency;
+        try { SaveSettings(); } catch { Settings.GlassVariant = oldVariant; Settings.ReduceGlassMotion = oldMotion; Settings.ReduceGlassTransparency = oldTransparency; throw; }
+        Render();
+    }
     public void ChangeFontFamily(string family)
     {
         if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");

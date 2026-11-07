@@ -82,6 +82,16 @@ internal sealed class CommandCenter : Window
                     Button(displays, "Display " + (i + 1), () => dashboard.MoveTo(w.Id, display.Key));
             }
         }
+        Heading("Glass");
+        var material = Row();
+        Button(material, "Clear", () => dashboard.ChangeGlass("Clear", dashboard.Settings.ReduceGlassMotion));
+        Button(material, "Regular", () => dashboard.ChangeGlass("Regular", dashboard.Settings.ReduceGlassMotion));
+        var motion = Row();
+        Button(motion, "Motion on", () => dashboard.ChangeGlass(dashboard.Settings.GlassVariant, false));
+        Button(motion, "Reduce motion", () => dashboard.ChangeGlass(dashboard.Settings.GlassVariant, true));
+        var transparency = Row();
+        Button(transparency, "Transparency on", () => dashboard.ChangeGlass(dashboard.Settings.GlassVariant, dashboard.Settings.ReduceGlassMotion, false));
+        Button(transparency, "Reduce transparency", () => dashboard.ChangeGlass(dashboard.Settings.GlassVariant, dashboard.Settings.ReduceGlassMotion, true));
         Heading("Typeface");
         var fonts = Row(); Button(fonts, "Lato", () => dashboard.ChangeFontFamily("Lato"));
         Button(fonts, "VT323", () => dashboard.ChangeFontFamily("VT323"));

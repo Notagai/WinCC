@@ -18,7 +18,7 @@ Only the clock is active. Older widget layouts and notes remain on disk for reco
 
 ## Refractive glass
 
-The renderer captures a padded local background region into memory, then applies a rounded-lens displacement field, bilinear sampling, slight RGB dispersion, Fresnel reflection and edge highlights. The centre transmits the captured background. The clock host itself is opaque and clipped to the lens outline; the apparent transmission comes from the sampled optical image, not OS translucency. Clock text is rendered separately and remains sharp. No Mica, Acrylic, DWM backdrop effect, remote service or external image is used.
+The renderer captures a padded local background region into memory, then applies a rounded-lens displacement field, bilinear sampling, slight RGB dispersion, Fresnel reflection and edge highlights. The centre transmits the captured background. The clock host itself is opaque and clipped to the lens outline; the apparent transmission comes from the sampled optical image, not OS translucency. Clock text is rendered separately and remains sharp. Settings offers Clear/Regular materials, reduced motion, and reduced transparency. Clear uses bright foreground text with local dimming; Regular can adapt text contrast. Pointer input shifts highlights, and appearance ramps lensing rather than opacity. No Mica, Acrylic, DWM backdrop effect, remote service or external image is used.
 
 This is a custom CPU optical renderer, not Apple's proprietary implementation. It requests up to ten frames per second, with a maximum 640-pixel render dimension; large clocks upscale the sampled material while text stays vector rendered. A single frame is processed at a time, off the UI thread. Hidden/minimized clocks stop sampling. Background pixels are neither saved nor uploaded.
 
@@ -26,6 +26,6 @@ This is a custom CPU optical renderer, not Apple's proprietary implementation. I
 
 ## Validation
 
-The Release build passes and **44 contracts pass**, including tests that actual background samples are displaced, the centre stays clear, rounded corners have an alpha mask, and changing the background changes the optical output. Windows live capture, compositing, performance and visual acceptance are **NOT RUN** in this Linux environment. Compilation and optical tests do not certify Apple-like visual quality.
+The Release build passes and **47 contracts pass**, including tests that actual background samples are displaced, the centre stays clear, rounded corners have an alpha mask, and changing the background changes the optical output. Windows live capture, compositing, performance and visual acceptance are **NOT RUN** in this Linux environment. Compilation and optical tests do not certify Apple-like visual quality.
 
-See [glass implementation notes](docs/GLASS.md), [development](docs/DEVELOPMENT.md), and [agent instructions](AGENTS.md).
+See [Apple research and implementation mapping](docs/APPLE-LIQUID-GLASS-RESEARCH.md), [glass implementation notes](docs/GLASS.md), [development](docs/DEVELOPMENT.md), and [agent instructions](AGENTS.md).

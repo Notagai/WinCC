@@ -50,11 +50,11 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             Child = new Border { Padding = new Thickness(18), Child = grid }
         };
-        card = new LiquidGlass { Material = widget.Type, Child = viewport };
+        card = new LiquidGlass { Material = widget.Type, Child = viewport, ClearVariant = dashboard.Settings.GlassVariant != "Regular", ReduceMotion = dashboard.Settings.ReduceGlassMotion, ReduceTransparency = dashboard.Settings.ReduceGlassTransparency };
         bool darkText = false;
         card.BackgroundLuminance += luminance =>
         {
-            bool next = darkText ? luminance > .48 : luminance > .65;
+            bool next = !card.ClearVariant && !SystemParameters.HighContrast && (darkText ? luminance > .48 : luminance > .65);
             if (next == darkText) return;
             darkText = next;
             live.Foreground = dateLine.Foreground = darkText ? new SolidColorBrush(Color.FromRgb(20, 25, 32)) : Brushes.White;
@@ -209,7 +209,7 @@ internal sealed class WidgetWindow : Window, IDisposable
     private void BuildContent(Grid body)
     {
         var clock = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-        live.FontSize = 44; live.FontWeight = FontWeights.Light; live.TextAlignment = TextAlignment.Center;
+        live.FontSize = 44; live.FontWeight = FontWeights.SemiBold; live.TextAlignment = TextAlignment.Center;
         dateLine.TextAlignment = TextAlignment.Center;
         live.Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 5, ShadowDepth = 1, Opacity = .65 };
         dateLine.Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 4, ShadowDepth = 1, Opacity = .7 };

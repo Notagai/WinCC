@@ -334,6 +334,36 @@ try
         Throws<ArgumentOutOfRangeException>(() => GlassOptics.Render(dark, 100, 75, 80, 60, double.NaN));
     });
 
+    Test("Clear glass uses localized dimming beneath bright foreground content", () =>
+    {
+        var source = Enumerable.Repeat((byte)200, 200 * 150 * 4).ToArray();
+        var result = GlassOptics.Render(source, 200, 150, 160, 120, 1, new GlassAppearance());
+        int center = (60 * 160 + 80) * 4, outsideLabel = (20 * 160 + 80) * 4;
+        Check(result[center] < result[outsideLabel]);
+        Check(result[center] >= 160 && result[outsideLabel] <= 205);
+    });
+    Test("Interactive lighting and material size alter the optical surface", () =>
+    {
+        var source = new byte[200 * 150 * 4];
+        for (int i = 0; i < source.Length; i++) source[i] = (byte)(i % 251);
+        var quiet = GlassOptics.Render(source, 200, 150, 160, 120, 1, new GlassAppearance());
+        var active = GlassOptics.Render(source, 200, 150, 160, 120, 1, new GlassAppearance(MaterialScale: 2, Interaction: 1, LightX: .7, LightY: .7));
+        Check(quiet.Zip(active).Count(p => p.First != p.Second) > 500);
+        Throws<ArgumentOutOfRangeException>(() => GlassOptics.Render(source, 200, 150, 160, 120, 1, new GlassAppearance(Interaction: double.NaN)));
+    });
+    Test("Regular, frosted and high-contrast material variants remain distinct", () =>
+    {
+        var source = Enumerable.Repeat((byte)220, 200 * 150 * 4).ToArray();
+        var clear = GlassOptics.Render(source, 200, 150, 160, 120, 1, new GlassAppearance());
+        var regular = GlassOptics.Render(source, 200, 150, 160, 120, 1, new GlassAppearance(Clear: false));
+        var frosted = GlassOptics.Render(source, 200, 150, 160, 120, 1, new GlassAppearance(ReducedTransparency: true));
+        var contrast = GlassOptics.Render(source, 200, 150, 160, 120, 1, new GlassAppearance(HighContrast: true));
+        int center = (60 * 160 + 80) * 4;
+        Check(clear[center] != regular[center] && frosted[center] < clear[center]);
+        Check(contrast[center] == 12 && contrast[center + 1] == 12 && contrast[center + 2] == 12);
+        Check(contrast[3] == 0);
+    });
+
 }
 finally { Directory.Delete(root, recursive: true); }
 Console.WriteLine($"{passed} passed, {failed} failed; Windows UI/native checks NOT RUN.");
