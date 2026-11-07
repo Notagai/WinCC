@@ -11,6 +11,7 @@ namespace WinCC.Host;
 /// <summary>Refracts a live local background sample. The child (clock text) is never distorted.</summary>
 internal sealed class LiquidGlass : Decorator, IDisposable
 {
+    public event Action<(double X, double Y)[]>? SurfaceOutline;
     public event Action<double>? BackgroundLuminance;
     public bool ClearVariant { get; init; } = true;
     public bool ReduceTransparency { get; init; }
@@ -18,7 +19,7 @@ internal sealed class LiquidGlass : Decorator, IDisposable
     private double interaction, targetInteraction, lightX = -.65, lightY = -.75, targetX = -.65, targetY = -.75;
     private readonly System.Diagnostics.Stopwatch age = System.Diagnostics.Stopwatch.StartNew();
     public string Material { get; set; } = "clock";
-    private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(33) };
     private BitmapSource? frame;
     private bool busy, disposed, captureReady;
     private int generation;
@@ -47,7 +48,7 @@ internal sealed class LiquidGlass : Decorator, IDisposable
         lightX += ((reduced ? -.65 : targetX) - lightX) * .25;
         lightY += ((reduced ? -.75 : targetY) - lightY) * .25;
         double emerge = reduced ? 1 : 1 - Math.Exp(-age.Elapsed.TotalSeconds * 5);
-        var appearance = new GlassAppearance(ClearVariant, Math.Clamp(ActualWidth / 280, .1, 10), interaction, lightX, lightY, SystemParameters.HighContrast, ReduceTransparency);
+        var appearance = new GlassAppearance(ClearVariant, Math.Clamp(ActualWidth / 280, .1, 10), interaction, lightX, lightY, SystemParameters.HighContrast, ReduceTransparency, Organic: true, Phase: reduced ? 0 : age.Elapsed.TotalSeconds * .85, CompositeToBackdrop: true);
         int version = generation;
         var origin = PointToScreen(new Point(0, 0));
         var dpi = VisualTreeHelper.GetDpi(this);
@@ -73,10 +74,10 @@ internal sealed class LiquidGlass : Decorator, IDisposable
                         luminance += (.2126 * captured.Pixels[i + 2] + .7152 * captured.Pixels[i + 1] + .0722 * captured.Pixels[i]) / 255;
                         samples++;
                     }
-                return (Bitmap: bitmap, Luminance: luminance / Math.Max(1, samples));
+                return (Bitmap: bitmap, Luminance: luminance / Math.Max(1, samples), Outline: GlassShape.Outline(width, height, appearance.Phase, appearance.Interaction));
             });
             if (disposed || version != generation || !IsVisible) return;
-            frame = image.Bitmap; BackgroundLuminance?.Invoke(image.Luminance); InvalidateVisual();
+            frame = image.Bitmap; SurfaceOutline?.Invoke(image.Outline); BackgroundLuminance?.Invoke(image.Luminance); InvalidateVisual();
         }
         catch (Exception error) when (error is System.ComponentModel.Win32Exception or InvalidOperationException or ArgumentException)
         {

@@ -364,6 +364,32 @@ try
         Check(contrast[3] == 0);
     });
 
+    Test("Living glass changes its silhouette over time without moving its content centre", () =>
+    {
+        Check(GlassShape.Distance(140, 75, 280, 150, 0, 0) < -20);
+        Check(GlassShape.Distance(140, 75, 280, 150, 2, 1) < -20);
+        var a = GlassShape.Outline(280, 150, 0, 0);
+        var b = GlassShape.Outline(280, 150, 2, 1);
+        Check(a.Zip(b).Count(p => Math.Abs(p.First.X - p.Second.X) + Math.Abs(p.First.Y - p.Second.Y) > .002) > 60);
+        foreach (var point in b)
+        {
+            Check(point.X > 0 && point.X < 1 && point.Y > 0 && point.Y < 1);
+            Check(Math.Abs(GlassShape.Distance(point.X * 280, point.Y * 150, 280, 150, 2, 1)) < .01);
+        }
+    });
+    Test("Opaque-host compositing does not turn clear edges black", () =>
+    {
+        var source = Enumerable.Repeat((byte)255, 200 * 150 * 4).ToArray();
+        var pixels = GlassOptics.Render(source, 200, 150, 160, 120, 1,
+            new GlassAppearance(Organic: true, Phase: 1.2, CompositeToBackdrop: true));
+        for (int i = 0; i < pixels.Length; i += 4)
+        {
+            Check(pixels[i + 3] == 255);
+            Check(pixels[i] >= 200 && pixels[i + 1] >= 200 && pixels[i + 2] >= 200);
+        }
+        Check(pixels[0] == 255);
+    });
+
 }
 finally { Directory.Delete(root, recursive: true); }
 Console.WriteLine($"{passed} passed, {failed} failed; Windows UI/native checks NOT RUN.");

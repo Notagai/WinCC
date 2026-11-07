@@ -40,7 +40,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         Title = "WinCC · " + WidgetCatalog.Get(widget.Type).Name;
         Width = widget.RectDip.Width; Height = widget.RectDip.Height;
         ShowActivated = false; ShowInTaskbar = false;
-        WindowStyle = dashboard.Windowed ? WindowStyle.SingleBorderWindow : WindowStyle.None;
+        WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
         AllowsTransparency = false;
         Background = Brushes.Transparent;
@@ -51,6 +51,12 @@ internal sealed class WidgetWindow : Window, IDisposable
             Child = new Border { Padding = new Thickness(18), Child = grid }
         };
         card = new LiquidGlass { Material = widget.Type, Child = viewport, ClearVariant = dashboard.Settings.GlassVariant != "Regular", ReduceMotion = dashboard.Settings.ReduceGlassMotion, ReduceTransparency = dashboard.Settings.ReduceGlassTransparency };
+        card.SurfaceOutline += outline =>
+        {
+            if (disposed) return;
+            var dpi = VisualTreeHelper.GetDpi(card);
+            BackdropCapture.ShapeBlob(Handle, (int)Math.Round(card.ActualWidth * dpi.DpiScaleX), (int)Math.Round(card.ActualHeight * dpi.DpiScaleY), outline);
+        };
         bool darkText = false;
         card.BackgroundLuminance += luminance =>
         {
@@ -110,7 +116,7 @@ internal sealed class WidgetWindow : Window, IDisposable
             var m = Monitor;
             var r = Geometry.Clamp(widget.RectDip, WidgetCatalog.Get(widget.Type), m);
             var size = ((int)Math.Round(r.Width * m.Scale), (int)Math.Round(r.Height * m.Scale));
-            if (!dashboard.Windowed && shapedSize != size)
+            if (shapedSize != size)
             {
                 BackdropCapture.ShapeClock(Handle, size.Item1, size.Item2); shapedSize = size;
             }

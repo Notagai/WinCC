@@ -2,7 +2,7 @@ namespace WinCC.Layout;
 
 /// <summary>A rounded lens with a clear interior, thick curved perimeter, dispersion and Fresnel reflection.</summary>
 public sealed record GlassAppearance(bool Clear = true, double MaterialScale = 1, double Interaction = 0,
-    double LightX = -.65, double LightY = -.75, bool HighContrast = false, bool ReducedTransparency = false);
+    double LightX = -.65, double LightY = -.75, bool HighContrast = false, bool ReducedTransparency = false, bool Organic = false, double Phase = 0, bool CompositeToBackdrop = false);
 
 public static class GlassOptics
 {
@@ -15,11 +15,12 @@ public static class GlassOptics
         var material = appearance;
         if (material is not null && (!double.IsFinite(material.MaterialScale) || material.MaterialScale is < .1 or > 10 ||
             !double.IsFinite(material.Interaction) || material.Interaction is < 0 or > 1 ||
-            !double.IsFinite(material.LightX) || !double.IsFinite(material.LightY))) throw new ArgumentOutOfRangeException(nameof(appearance));
+            !double.IsFinite(material.Phase) || !double.IsFinite(material.LightX) || !double.IsFinite(material.LightY))) throw new ArgumentOutOfRangeException(nameof(appearance));
         double thickness = material is null ? 1 : Math.Clamp(Math.Sqrt(material.MaterialScale), .8, 1.6);
         double radius = Math.Min(width, height) * .22, bevel = Math.Min(width, height) * .16;
         double Distance(double x, double y)
         {
+            if (material?.Organic == true) return GlassShape.Distance(x, y, width, height, material.Phase, material.Interaction);
             double qx = Math.Abs(x - width * .5) - (width * .5 - radius - 1);
             double qy = Math.Abs(y - height * .5) - (height * .5 - radius - 1);
             double ax = Math.Max(qx, 0), ay = Math.Max(qy, 0);
@@ -37,7 +38,16 @@ public static class GlassOptics
         for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
         {
             double distance = Distance(x + .5, y + .5), alpha = Math.Clamp(.5 - distance, 0, 1);
-            if (alpha == 0) continue;
+            if (alpha == 0)
+            {
+                if (material?.CompositeToBackdrop == true)
+                {
+                    int outside = (y * width + x) * 4;
+                    for (int c = 0; c < 3; c++) output[outside + c] = (byte)Sample((x + .5) / width * sourceWidth * .8 + sourceWidth * .1, (y + .5) / height * sourceHeight * .8 + sourceHeight * .1, c);
+                    output[outside + 3] = 255;
+                }
+                continue;
+            }
             double nx = (Distance(x + 1, y) - Distance(x - 1, y)) * .5;
             double ny = (Distance(x, y + 1) - Distance(x, y - 1)) * .5;
             double edge = Math.Clamp(1 + distance / bevel, 0, 1);
@@ -86,7 +96,17 @@ public static class GlassOptics
                 // Keep the centre clear. Reflection grows toward the lens edge, not across the entire card.
                 output[index + channel] = (byte)Math.Clamp(pixel * (1 - reflection) + 255 * (reflection + rim), 0, 255);
             }
-            output[index + 3] = (byte)(alpha * 255);
+            if (material?.CompositeToBackdrop == true)
+            {
+                // Resolve edge coverage against the actual background, never an opaque black host.
+                for (int c = 0; c < 3; c++)
+                {
+                    double behind = Sample((x + .5) / width * sourceWidth * .8 + sourceWidth * .1, (y + .5) / height * sourceHeight * .8 + sourceHeight * .1, c);
+                    output[index + c] = (byte)(output[index + c] * alpha + behind * (1 - alpha));
+                }
+                output[index + 3] = 255;
+            }
+            else output[index + 3] = (byte)(alpha * 255);
         }
         return output;
     }

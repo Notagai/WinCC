@@ -16,6 +16,15 @@ public static class BackdropCapture
         // SetWindowRgn transfers ownership on success; delete only when that transfer fails.
         if (SetWindowRgn(window, region, true) == 0) { DeleteObject(region); throw new Win32Exception(); }
     }
+    public static void ShapeBlob(nint window, int width, int height, (double X, double Y)[] outline)
+    {
+        var points = outline.Select(p => new NativePoint { X = (int)Math.Round(p.X * width), Y = (int)Math.Round(p.Y * height) }).ToArray();
+        nint region = CreatePolygonRgn(points, points.Length, 1);
+        if (region == 0) throw new Win32Exception();
+        if (SetWindowRgn(window, region, true) == 0) { DeleteObject(region); throw new Win32Exception(); }
+    }
+    [StructLayout(LayoutKind.Sequential)] private struct NativePoint { public int X, Y; }
+    [DllImport("gdi32.dll")] private static extern nint CreatePolygonRgn([In] NativePoint[] points, int count, int mode);
     public static bool Exclude(nint window) => SetWindowDisplayAffinity(window, 0x11);
     public static BackdropFrame Read(int left, int top, int width, int height, int outputWidth, int outputHeight)
     {
