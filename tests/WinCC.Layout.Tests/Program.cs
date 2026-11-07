@@ -569,6 +569,56 @@ try
         Throws<ArgumentException>(()=>GlyphSurface.Build(mask,w,h,double.NaN));
     });
 
+    Test("Native glass resolution follows physical DPI through 4K and 8K", () =>
+    {
+        Check(GlassResolution.Pixels(2560,1440,1.5,1.5)==(3840,2160));
+        Check(GlassResolution.Pixels(7680,4320,1,1)==(7680,4320));
+        Check(GlassResolution.Pixels(3840,2160,1,1,.5)==(1920,1080));
+        Check(GlassResolution.Valid(9600,5400)); // Padded 8K capture.
+        var odd=GlassResolution.Plan(1366,769,1,1);
+        Check(odd.SampleRegion.Width==1366 && odd.SampleRegion.Height==769);
+        Check(odd.SourceWidth==odd.CaptureWidth && odd.SampleRegion.Left==odd.PaddingX);
+        Throws<ArgumentOutOfRangeException>(()=>GlassResolution.Pixels(100000,100000,1,1));
+        Throws<ArgumentOutOfRangeException>(()=>GlassResolution.Pixels(1920,1080,double.NaN,1));
+    });
+    Test("4K output retains single-pixel source detail and native glyph coverage", () =>
+    {
+        const int w=3840,h=2160,sw=4800,sh=2700;
+        var source=new byte[sw*sh*4]; var mask=new byte[w*h];
+        for(int y=0;y<sh;y++) for(int x=0;x<sw;x++)
+        {
+            int i=(y*sw+x)*4; source[i]=source[i+1]=source[i+2]=(byte)(x%2==0?24:232); source[i+3]=255;
+        }
+        for(int y=200;y<1960;y++) for(int x=800;x<1000;x++) mask[y*w+x]=255;
+        mask[1080*w+1201]=255; mask[1080*w+1202]=127;
+        var output=GlassOptics.Render(source,sw,sh,w,h,0,new GlassAppearance(CompositeToBackdrop:true),shapeMask:mask);
+        Check(output.Length==w*h*4);
+        for(int x=1500;x<1520;x++) Check(output[(1080*w+x)*4]==source[((1080+270)*sw+x+480)*4]);
+        Check(Math.Abs(output[(1080*w+900)*4]-output[(1080*w+901)*4])>180);
+        var coverage=GlassOptics.Render(source,sw,sh,w,h,0,new GlassAppearance(HighContrast:true),shapeMask:mask);
+        Check(coverage[(1080*w+1201)*4+3]==255 && coverage[(1080*w+1202)*4+3]==127);
+        Check(coverage[(1080*w+1203)*4+3]==0);
+        Throws<ArgumentOutOfRangeException>(()=>GlassOptics.Render(source,sw,sh,w,h,sampleRegion:new(-1,0,w,h)));
+    });
+    Test("Full screen sizing persists and reprojects beyond taskbar work area", () =>
+    {
+        var monitor=new MonitorArea("wide",-3840,48,2560,1408,1.5,true,-3840,0,2560,1440);
+        var widget=Clock() with {MonitorKey="wide",Settings=new() { ["displayArea"]="screen",["fillDisplay"]="true",["anchorX"]="50",["anchorY"]="50" }};
+        var doc=WithClock(); doc.Active.Widgets[0]=widget;
+        widget=LayoutJson.Parse(LayoutJson.Serialize(doc)).Active.Widgets[0];
+        var area=Geometry.ForWidget(widget,[monitor]); var rect=Geometry.Project(widget,area);
+        Check(rect==new RectDip(0,0,2560,1440));
+        Check(Geometry.ToPhysical(rect,area)==(-3840,0));
+        var changed=monitor with {ScreenWidthDip=5120,ScreenHeightDip=2880};
+        Check(Geometry.Project(widget,Geometry.ForWidget(widget,[changed]))==new RectDip(0,0,5120,2880));
+        var work=widget with {Settings=new() { ["displayArea"]="work",["fillDisplay"]="true" }};
+        Check(Geometry.Project(work,Geometry.ForWidget(work,[monitor]))==new RectDip(0,0,2560,1408));
+        doc.Active.Widgets[0].Settings["displayArea"]="invalid";
+        Throws<InvalidDataException>(()=>LayoutValidator.Validate(doc));
+        var design=new ClockDesign {FillFrame=true,ShowDate=false}; design.Validate();
+        Check(System.Text.Json.JsonSerializer.Deserialize<ClockDesign>(System.Text.Json.JsonSerializer.Serialize(design))!.FillFrame);
+    });
+
 }
 finally { Directory.Delete(root, recursive: true); }
 Console.WriteLine($"{passed} passed, {failed} failed; Windows UI/native checks NOT RUN.");

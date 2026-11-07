@@ -1,0 +1,13 @@
+# 0005 — Native resolution and full-screen clock sizing
+
+Status: implementation candidate, 2026-11-07. Native Windows acceptance pending.
+
+The owner reports blurred large clocks and explicitly requests sizing to the entire screen. The former 640-pixel optical output was enlarged over the window, and the existing fill action used the taskbar work area. Both limits conflict with this request.
+
+Capture and output now default to native physical pixels. Full-resolution glyph coverage is independent of a bounded 768-pixel surface geometry field, interpolated during sampling. This bounds cached surface memory without enlarging the image or glyph mask. Source coordinates use an explicit sample region, avoiding half-pixel blur and rounding errors on odd-sized displays. Large output rows can render concurrently, capped at eight workers; frames never overlap. The UI reuses a writable bitmap instead of allocating a new large image each frame. Performance settings persist 100%, 75% or 50% image scale; the default is 100%.
+
+Image buffers are limited to 16,384 pixels per dimension and 64 megapixels, including the padded source. A standard padded 8K frame fits. Exceeding the budget reports an error and stops sampling rather than silently reducing quality. Native output increases CPU/bandwidth requirements; the FPS selection is a deadline target, not a throughput guarantee.
+
+Monitor enumeration retains both work and full bounds. The user can explicitly fill either area, including on monitors with negative origins or different DPI. The saved `displayArea`/`fillDisplay` settings are validated, retained in presets, and reprojected on display changes. Manual resizing releases fill mode. Older layouts retain work-area projection. Full-screen sizing does not change z-order or hide the taskbar. Time-shaped hosts use a rectangular clipping region so a capsule does not cut off expanded glyph corners. A separate FillFrame design option stretches time glyphs to the available frame; proportional sizing remains selectable.
+
+Validation: 68 contracts pass, including an actual 3840×2160 render preserving single-pixel source detail/coverage, native DPI planning, odd-size capture alignment, full-screen persistence and topology reprojection. Release solution builds with zero warnings/errors on Linux. Windows display/capture, writable bitmap presentation, full-screen input and FPS checks remain NOT RUN (G1-003/G1-004/G1-008 and D-001–D-012 as applicable). Check native appearance with the user's font and wallpaper at 100%, mixed DPI and full-screen size, including tray access, screenshot mode and manual resize. Rollback: revert this change; archive settings/layout before manually removing added fields.

@@ -16,6 +16,7 @@ public sealed class UserSettings
     public string FontFamily { get; set; } = "Lato";
     public bool TimeShapedGlass { get; set; }
     public int GlassFps { get; set; } = 60;
+    public double GlassRenderScale { get; set; } = 1;
     public string GlassVariant { get; set; } = "Clear";
     public bool ReduceGlassTransparency { get; set; }
     public bool ReduceGlassMotion { get; set; }
@@ -57,7 +58,7 @@ internal sealed class Dashboard : IDisposable
             {
                 if (new FileInfo(settingsFile).Length > 65536) throw new InvalidDataException();
                 Settings = JsonSerializer.Deserialize<UserSettings>(File.ReadAllBytes(settingsFile)) ?? throw new InvalidDataException();
-                if (Settings.GlassFps is < 0 or > 500 || !double.IsFinite(Settings.InterfaceFontSize) || Settings.InterfaceFontSize is < 12 or > 32 ||
+                if (Settings.GlassRenderScale is not (.5 or .75 or 1) || Settings.GlassFps is < 0 or > 500 || !double.IsFinite(Settings.InterfaceFontSize) || Settings.InterfaceFontSize is < 12 or > 32 ||
                     !double.IsFinite(Settings.WidgetFontSize) || Settings.WidgetFontSize is < 12 or > 32 || Settings.Launchers is null || Settings.Launchers.Count > 100 ||
                     Settings.Theme is not ("Winter Glass" or "Midnight") ||
                     !double.IsFinite(Settings.Latitude) || Settings.Latitude is < -90 or > 90 ||
@@ -103,9 +104,10 @@ internal sealed class Dashboard : IDisposable
         foreach (var w in Editor.Current.Active.Widgets.Where(w => w.Type == "clock"))
         {
             var m = Monitors.FirstOrDefault(m => m.Key == w.MonitorKey || w.MonitorKey == "primary" && m.Primary);
+            if (m is not null) m = Geometry.Area(m, w.Settings.GetValueOrDefault("displayArea") == "screen");
             if (m is not null && !w.Settings.ContainsKey("anchorX") && (w.RectDip.X + w.RectDip.Width > m.WidthDip + 0.1 ||
                                   w.RectDip.Y + w.RectDip.Height > m.HeightDip + 0.1))
-                throw new InvalidOperationException("A widget exceeds its display work area. Move or resize it before saving.");
+                throw new InvalidOperationException("A widget exceeds its selected display area. Move or resize it before saving.");
         }
         Editor.Done(store); Log.Write("layout.saved", "done");
         Notify("Normal Mode · Layout saved."); Render();
@@ -160,7 +162,7 @@ internal sealed class Dashboard : IDisposable
     public void MoveTo(string id, string monitorKey)
     {
         var w = Editor.Current.Active.Widgets.Single(w => w.Id == id);
-        var m = Geometry.Resolve(monitorKey, Monitors); var spec = WidgetCatalog.Get(w.Type);
+        var m = Geometry.Area(Geometry.Resolve(monitorKey, Monitors), w.Settings.GetValueOrDefault("displayArea") == "screen"); var spec = WidgetCatalog.Get(w.Type);
         if (m.WidthDip < spec.MinWidth || m.HeightDip < spec.MinHeight)
             throw new InvalidOperationException("The target display is too small for this widget.");
         Editor.Update(w with { MonitorKey = m.Key, RectDip = Geometry.Clamp(w.RectDip, spec, m) }); Render();
@@ -216,14 +218,14 @@ internal sealed class Dashboard : IDisposable
         try { SaveSettings(); } catch { Settings.Design = old; throw; }
         Render();
     }
-    public void FitClockToDisplay()
+    public void FitClockToDisplay(bool wholeScreen = false)
     {
         if (ReadOnly) throw new InvalidOperationException("Layout saving is disabled.");
         bool editing = Editor.IsEditing; Editor.Enter();
         foreach (var w in Editor.Current.Active.Widgets.Where(w => w.Type == "clock"))
         {
-            var m = Geometry.Resolve(w.MonitorKey, Monitors);
-            var settings = new Dictionary<string, string>(w.Settings) { ["anchorX"] = "50", ["anchorY"] = "50" };
+            var m = Geometry.Area(Geometry.Resolve(w.MonitorKey, Monitors), wholeScreen);
+            var settings = new Dictionary<string, string>(w.Settings) { ["anchorX"] = "50", ["anchorY"] = "50", ["displayArea"] = wholeScreen ? "screen" : "work", ["fillDisplay"] = "true" };
             Editor.Update(w with { RectDip = Geometry.Clamp(new(0, 0, m.WidthDip, m.HeightDip), WidgetCatalog.Get("clock"), m), Settings = settings });
         }
         if (!editing) Editor.Done(store);
@@ -237,7 +239,7 @@ internal sealed class Dashboard : IDisposable
         bool wasEditing = Editor.IsEditing; Editor.Enter();
         foreach (var w in Editor.Current.Active.Widgets.Where(w => w.Type == "clock"))
         {
-            var m = Geometry.Resolve(w.MonitorKey, Monitors);
+            var m = Geometry.ForWidget(w, Monitors);
             double x = horizontal ?? (w.RectDip.X + w.RectDip.Width / 2) / m.WidthDip * 100;
             double y = vertical ?? (w.RectDip.Y + w.RectDip.Height / 2) / m.HeightDip * 100;
             var settings = new Dictionary<string, string>(w.Settings) { ["anchorX"] = x.ToString(System.Globalization.CultureInfo.InvariantCulture), ["anchorY"] = y.ToString(System.Globalization.CultureInfo.InvariantCulture) };
@@ -247,6 +249,14 @@ internal sealed class Dashboard : IDisposable
         Render();
     }
     public bool ScreenshotMode { get; private set; }
+    public void ChangeRenderScale(double scale)
+    {
+        if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
+        if (scale is not (.5 or .75 or 1)) throw new ArgumentOutOfRangeException(nameof(scale));
+        double old = Settings.GlassRenderScale; Settings.GlassRenderScale = scale;
+        try { SaveSettings(); } catch { Settings.GlassRenderScale = old; throw; }
+        Render();
+    }
     public void SetScreenshotMode(bool enabled)
     {
         foreach (var window in windows) window.SetScreenshotMode(enabled);
@@ -310,7 +320,7 @@ internal sealed class Dashboard : IDisposable
     private void RefreshMonitors()
     {
         Monitors = Desktop.Displays().Select(d => new MonitorArea(d.Key, d.Left, d.Top,
-            d.Width / d.Scale, d.Height / d.Scale, d.Scale, d.Primary)).ToArray();
+            d.Width / d.Scale, d.Height / d.Scale, d.Scale, d.Primary, d.ScreenLeft, d.ScreenTop, d.ScreenWidth / d.Scale, d.ScreenHeight / d.Scale)).ToArray();
         if (Monitors.Count == 0) throw new InvalidOperationException("No usable displays were found.");
     }
     public void DisplayChanged() => Action(() =>

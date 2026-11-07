@@ -7,14 +7,29 @@ public sealed record GlassAppearance(bool Clear = true, double MaterialScale = 1
 public static class GlassOptics
 {
     private readonly record struct LensPoint(double Alpha, double Nx, double Ny, double Edge, double Displacement, double Fresnel, double Rim, double LabelDim);
-    private sealed record LensGeometry(int Width, int Height, byte[]? Mask, LensPoint[] Points);
+    private sealed record LensGeometry(int Width, int Height, int OutputWidth, int OutputHeight, byte[]? Mask, LensPoint[] Points);
     private static readonly object CacheGate = new();
     private static LensGeometry? cached;
-    private static LensPoint[] RigidGeometry(int width, int height, byte[]? mask)
+    private static LensPoint Mix(LensPoint a, LensPoint b, double t) => new(
+        a.Alpha + (b.Alpha - a.Alpha) * t, a.Nx + (b.Nx - a.Nx) * t, a.Ny + (b.Ny - a.Ny) * t,
+        a.Edge + (b.Edge - a.Edge) * t, a.Displacement + (b.Displacement - a.Displacement) * t,
+        a.Fresnel + (b.Fresnel - a.Fresnel) * t, a.Rim + (b.Rim - a.Rim) * t, a.LabelDim + (b.LabelDim - a.LabelDim) * t);
+    private static LensGeometry RigidGeometry(int width, int height, byte[]? mask)
     {
         lock (CacheGate)
         {
-            if (cached is { } existing && existing.Width == width && existing.Height == height && ReferenceEquals(existing.Mask, mask)) return existing.Points;
+            if (cached is { } existing && existing.OutputWidth == width && existing.OutputHeight == height && ReferenceEquals(existing.Mask, mask)) return existing;
+            int outputWidth = width, outputHeight = height; var originalMask = mask;
+            // Bound surface math independently of image resolution. Native image pixels and
+            // glyph coverage stay full resolution; the smooth slope field is interpolated.
+            double ratio = Math.Min(1, 768d / Math.Max(width, height));
+            width = Math.Max(2, (int)Math.Round(width * ratio)); height = Math.Max(2, (int)Math.Round(height * ratio));
+            if (mask is not null && (width != outputWidth || height != outputHeight))
+            {
+                mask = new byte[width * height];
+                for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
+                    mask[y * width + x] = originalMask![Math.Min(outputHeight - 1, (int)((y + .5) * outputHeight / height)) * outputWidth + Math.Min(outputWidth - 1, (int)((x + .5) * outputWidth / width))];
+            }
             var points = new LensPoint[width * height];
             var glyphDistance = mask is null ? null : GlyphDistance.Build(mask, width, height);
             double strokeRadius = glyphDistance is null ? 0 : Math.Max(1, -glyphDistance.Min());
@@ -56,19 +71,24 @@ public static class GlassOptics
                 double dx = (x - width * .5) / (width * .4), dy = (y - height * .5) / (height * .32);
                 points[y * width + x] = new(alpha, nx, ny, edge, displacement, edge * edge * edge * edge * edge, Math.Exp(-Math.Abs(d + 1.2) * 1.5), 1 - .08 * Math.Exp(-2 * (dx * dx + dy * dy)));
             }
-            cached = new(width, height, mask, points); // One bounded cache; resizing replaces the old geometry.
-            return points;
+            cached = new(width, height, outputWidth, outputHeight, originalMask, points);
+            return cached;
         }
     }
 
-    public static byte[] Render(byte[] source, int sourceWidth, int sourceHeight, int width, int height, double strength = 1, GlassAppearance? appearance = null, byte[]? destination = null, byte[]? shapeMask = null)
+    public static byte[] Render(byte[] source, int sourceWidth, int sourceHeight, int width, int height, double strength = 1, GlassAppearance? appearance = null, byte[]? destination = null, byte[]? shapeMask = null, GlassSampleRegion? sampleRegion = null)
     {
-        if (width is < 2 or > 1024 || height is < 2 or > 1024 || sourceWidth < 2 || sourceHeight < 2 ||
+        if (!GlassResolution.Valid(width, height) || !GlassResolution.Valid(sourceWidth, sourceHeight) ||
             source.Length != checked(sourceWidth * sourceHeight * 4) || !double.IsFinite(strength) || strength is < 0 or > 2)
             throw new ArgumentOutOfRangeException(nameof(width));
         if (destination is not null && (destination.Length != width * height * 4 || ReferenceEquals(destination, source)))
             throw new ArgumentException("Output buffer must match the output size and be separate from the source.", nameof(destination));
         if (shapeMask is not null && shapeMask.Length != width * height) throw new ArgumentException("Invalid glyph mask.");
+        sampleRegion ??= new(sourceWidth * .1, sourceHeight * .1, sourceWidth * .8, sourceHeight * .8);
+        if (!new[] { sampleRegion.Left, sampleRegion.Top, sampleRegion.Width, sampleRegion.Height }.All(double.IsFinite) ||
+            sampleRegion.Left < 0 || sampleRegion.Top < 0 || sampleRegion.Width <= 0 || sampleRegion.Height <= 0 ||
+            sampleRegion.Left + sampleRegion.Width > sourceWidth || sampleRegion.Top + sampleRegion.Height > sourceHeight)
+            throw new ArgumentOutOfRangeException(nameof(sampleRegion));
         var output = destination ?? new byte[width * height * 4];
         if (destination is not null && appearance?.CompositeToBackdrop != true) Array.Clear(output);
         var material = appearance;
@@ -98,21 +118,45 @@ public static class GlassOptics
             return (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
         }
         var geometry = material?.Organic == true ? null : RigidGeometry(width, height, shapeMask);
-        // Source includes a 12.5% margin on each side, supporting optical displacement beyond the window.
-        for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
+        LensPoint Surface(int x, int y)
         {
-            var point = geometry is null ? default : geometry[y * width + x];
-            double distance = geometry is null ? Distance(x + .5, y + .5) : 0, alpha = geometry is null ? Math.Clamp(.5 - distance, 0, 1) : point.Alpha;
+            if (geometry!.Width == width && geometry.Height == height) return geometry.Points[y * width + x];
+            double gx = Math.Clamp((x + .5) * geometry.Width / width - .5, 0, geometry.Width - 1.001);
+            double gy = Math.Clamp((y + .5) * geometry.Height / height - .5, 0, geometry.Height - 1.001);
+            int ix = (int)gx, iy = (int)gy; double tx = gx - ix, ty = gy - iy;
+            int a = iy * geometry.Width + ix, b = a + geometry.Width;
+            return Mix(Mix(geometry.Points[a], geometry.Points[a + 1], tx), Mix(geometry.Points[b], geometry.Points[b + 1], tx), ty);
+        }
+        double fieldScaleX = geometry is null ? 1 : (double)width / geometry.Width;
+        double fieldScaleY = geometry is null ? 1 : (double)height / geometry.Height;
+        double sourceScaleX = sampleRegion.Width / width, sourceScaleY = sampleRegion.Height / height;
+        bool alignedSource = Math.Abs(sourceScaleX - 1) < .000001 && Math.Abs(sourceScaleY - 1) < .000001 &&
+            Math.Abs(sampleRegion.Left - Math.Round(sampleRegion.Left)) < .000001 && Math.Abs(sampleRegion.Top - Math.Round(sampleRegion.Top)) < .000001;
+        // Source includes a 12.5% margin on each side, supporting optical displacement beyond the window.
+        void Row(int y)
+        {
+          for (int x = 0; x < width; x++)
+          {
+            double baseX = (x + .5) * sourceScaleX + sampleRegion.Left - .5;
+            double baseY = (y + .5) * sourceScaleY + sampleRegion.Top - .5;
+            double distance = shapeMask is null ? Distance(x + .5, y + .5) : 0;
+            double alpha = shapeMask is null ? Math.Clamp(.5 - distance, 0, 1) : shapeMask[y * width + x] / 255d;
             if (alpha == 0)
             {
                 if (material?.CompositeToBackdrop == true)
                 {
                     int outside = (y * width + x) * 4;
-                    for (int c = 0; c < 3; c++) output[outside + c] = (byte)Sample((x + .5) / width * sourceWidth * .8 + sourceWidth * .1, (y + .5) / height * sourceHeight * .8 + sourceHeight * .1, c);
+                    if (alignedSource)
+                    {
+                        int behind = (((int)baseY) * sourceWidth + (int)baseX) * 4;
+                        output[outside] = source[behind]; output[outside + 1] = source[behind + 1]; output[outside + 2] = source[behind + 2];
+                    }
+                    else for (int c = 0; c < 3; c++) output[outside + c] = (byte)Sample(baseX, baseY, c);
                     output[outside + 3] = 255;
                 }
                 continue;
             }
+            var point = geometry is null ? default : Surface(x, y);
             double nx = geometry is null ? (Distance(x + 1, y) - Distance(x - 1, y)) * .5 : point.Nx;
             double ny = geometry is null ? (Distance(x, y + 1) - Distance(x, y - 1)) * .5 : point.Ny;
             double edge = geometry is null ? Math.Clamp(1 + distance / bevel, 0, 1) : point.Edge;
@@ -137,8 +181,8 @@ public static class GlassOptics
             for (int channel = 0; channel < 3; channel++)
             {
                 double dispersion = channel == 2 ? 1.002 : channel == 0 ? .998 : 1;
-                double sx = (x + .5 - nx * displacement * dispersion) / width * sourceWidth * .8 + sourceWidth * .1;
-                double sy = (y + .5 - ny * displacement * dispersion) / height * sourceHeight * .8 + sourceHeight * .1;
+                double sx = baseX - nx * displacement * dispersion * fieldScaleX * sourceScaleX;
+                double sy = baseY - ny * displacement * dispersion * fieldScaleY * sourceScaleY;
                 double pixel = Sample(sx, sy, channel);
                 if (material is not null)
                 {
@@ -181,13 +225,17 @@ public static class GlassOptics
                 // Resolve edge coverage against the actual background, never an opaque black host.
                 for (int c = 0; c < 3; c++)
                 {
-                    double behind = Sample((x + .5) / width * sourceWidth * .8 + sourceWidth * .1, (y + .5) / height * sourceHeight * .8 + sourceHeight * .1, c);
+                    double behind = Sample(baseX, baseY, c);
                     output[index + c] = (byte)(output[index + c] * alpha + behind * (1 - alpha));
                 }
                 output[index + 3] = 255;
             }
             else output[index + 3] = material?.CompositeToBackdrop == true ? (byte)255 : (byte)(alpha * 255);
+          }
         }
+        if ((long)width * height >= 500000)
+            Parallel.For(0, height, new ParallelOptions { MaxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 8) }, Row);
+        else for (int y = 0; y < height; y++) Row(y);
         return output;
     }
 }

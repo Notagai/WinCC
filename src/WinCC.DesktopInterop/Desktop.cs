@@ -3,7 +3,8 @@ using System.Runtime.InteropServices;
 
 namespace WinCC.DesktopInterop;
 
-public sealed record Display(string Key, string Name, int Left, int Top, int Width, int Height, double Scale, bool Primary);
+public sealed record Display(string Key, string Name, int Left, int Top, int Width, int Height, double Scale, bool Primary,
+    int ScreenLeft, int ScreenTop, int ScreenWidth, int ScreenHeight);
 public sealed record SystemSample(double? CpuPercent, ulong? UsedMemory, ulong? TotalMemory);
 
 /// <summary>Only this assembly calls user32/shcore/kernel32. No Explorer mutation or global input hooks.</summary>
@@ -24,7 +25,7 @@ public static class Desktop
                 key = device.DeviceId;
             var r = info.Work;
             displays.Add(new(key, info.Device, r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top,
-                dpi / 96d, (info.Flags & 1) != 0));
+                dpi / 96d, (info.Flags & 1) != 0, info.Monitor.Left, info.Monitor.Top, info.Monitor.Right - info.Monitor.Left, info.Monitor.Bottom - info.Monitor.Top));
             return true;
         };
         if (!Native.EnumDisplayMonitors(0, 0, callback, 0)) throw new Win32Exception(Marshal.GetLastWin32Error());

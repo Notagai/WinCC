@@ -7,6 +7,7 @@ public sealed record ClockDesign
     public string Font { get; init; } = "Lato";
     public int Weight { get; init; } = 600;
     public bool Italic { get; init; }
+    public bool FillFrame { get; init; }
     public double SizePercent { get; init; } = 100;
     public double StretchX { get; init; } = 1;
     public double StretchY { get; init; } = 1;

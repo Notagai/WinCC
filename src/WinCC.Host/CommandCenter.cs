@@ -106,7 +106,7 @@ internal sealed class CommandCenter : Window
                     Button(displays, "Display " + (i + 1), () => dashboard.MoveTo(w.Id, display.Key));
             }
         }
-        Heading("Position · % of usable display");
+        Heading("Position · % of selected display area");
         var position = Row();
         var xPosition = new TextBox { Text = "50", Width = 80, Margin = new Thickness(4) };
         var yPosition = new TextBox { Text = "50", Width = 80, Margin = new Thickness(4) };
@@ -119,7 +119,9 @@ internal sealed class CommandCenter : Window
         Button(position, "X only", () => dashboard.SnapClock(Read(xPosition), null));
         Button(position, "Y only", () => dashboard.SnapClock(null, Read(yPosition)));
         Button(position, "Center", () => dashboard.SnapClock(50, 50));
-        Button(position, "Fill display", dashboard.FitClockToDisplay);
+        var sizing = Row();
+        Button(sizing, "Fill work area", () => dashboard.FitClockToDisplay(false));
+        Button(sizing, "Fill whole screen", () => dashboard.FitClockToDisplay(true));
         var shape = Row(); Button(shape, "Glass lens", () => dashboard.ChangeClockShape(false)); Button(shape, "Time-shaped glass", () => dashboard.ChangeClockShape(true));
         Heading("Presets");
         for (int slot = 1; slot <= 3; slot++)
@@ -135,6 +137,10 @@ internal sealed class CommandCenter : Window
         var adjust = Row();
         Button(adjust, "−5 FPS", () => dashboard.ChangeFrameRate(Math.Max(1, (dashboard.Settings.GlassFps == 0 ? 60 : dashboard.Settings.GlassFps) - 5)));
         Button(adjust, "+5 FPS", () => dashboard.ChangeFrameRate(Math.Min(500, (dashboard.Settings.GlassFps == 0 ? 60 : dashboard.Settings.GlassFps) + 5)));
+        Heading("Render resolution");
+        var resolution = Row();
+        foreach (double scale in new[] { 1d, .75, .5 })
+            Button(resolution, (scale == dashboard.Settings.GlassRenderScale ? "✓ " : "") + (scale == 1 ? "Native · 100%" : (scale * 100) + "%"), () => dashboard.ChangeRenderScale(scale));
         Heading("Glass");
         var material = Row();
         Button(material, "Clear", () => dashboard.ChangeGlass("Clear", dashboard.Settings.ReduceGlassMotion));
@@ -212,8 +218,9 @@ internal sealed class CommandCenter : Window
         var sx = Field("Horizontal stretch · 0.4–2.5", N(d.StretchX)); var sy = Field("Vertical stretch · 0.4–2.5", N(d.StretchY));
         var tracking = Field("Letter spacing · −4–20", N(d.Tracking)); var stroke = Field("Stroke thickness · 0–8", N(d.Stroke));
         var timeFormat = Field("Custom time format", d.TimeFormat);
-        bool show = d.ShowDate, italic = d.Italic;
+        bool show = d.ShowDate, italic = d.Italic, fill = d.FillFrame;
         var italicToggle = new Button { Content = italic ? "Italic on" : "Italic off" }; italicToggle.Click += (_, _) => { italic = !italic; italicToggle.Content = italic ? "Italic on" : "Italic off"; }; Row().Children.Add(italicToggle);
+        var fillToggle = new Button { Content = fill ? "Time fills frame" : "Time keeps proportions" }; fillToggle.Click += (_, _) => { fill = !fill; fillToggle.Content = fill ? "Time fills frame" : "Time keeps proportions"; }; Row().Children.Add(fillToggle);
         Group("Material & tint");
         var refraction = Field("Lens thickness · 0–2", N(d.Refraction));
         var tint = Field("Glass tint · #RRGGBB", d.Tint); var amount = Field("Tint strength · 0–35%", N(d.TintAmount * 100));
@@ -235,7 +242,7 @@ internal sealed class CommandCenter : Window
         {
             Font = font.Text.Trim(), Weight = int.Parse(weight.Text, System.Globalization.CultureInfo.InvariantCulture), SizePercent = Read(size), StretchX = Read(sx), StretchY = Read(sy),
             Tracking = Read(tracking), Stroke = Read(stroke), Refraction = Read(refraction), Tint = tint.Text.Trim(), TintAmount = Read(amount) / 100,
-            ShowDate = show, Italic = italic, TimeFormat = timeFormat.Text, DateFormat = dateFormat.Text,
+            ShowDate = show, Italic = italic, FillFrame = fill, TimeFormat = timeFormat.Text, DateFormat = dateFormat.Text,
             DateFont = dateFont.Text.Trim(), DateSize = Read(dateSize), DateLift = Read(dateLift), DateColor = dateColor.Text.Trim()
         }));
         Button(actions, "Reset design", () => dashboard.ApplyDesign(new ClockDesign()));

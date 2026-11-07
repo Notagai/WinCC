@@ -28,7 +28,7 @@ The earlier signed-distance lens, numerical normals, chromatic dispersion, bilin
 
 47 contracts pass, including material-specific checks for localized Clear dimming, interaction/size changes, and distinct Regular/frosted/high-contrast outputs. The complete Windows-targeted Release build passes with zero warnings/errors. Reduced-motion wiring and live capture require an actual Windows UI test; pure optical tests do not establish their native behavior.
 
-The renderer still uses local CPU capture and a 100 ms request interval, processes one frame at a time, and caps material resolution at 640 pixels. It does not provide Apple-level GPU performance. Capture exclusion can hide WinCC from screenshots/recordings. These limitations remain material to evaluating the result.
+The renderer uses local CPU capture and configurable completion-paced FPS, processing one frame at a time. Image output now defaults to native display resolution, with optional 75%/50% settings; a separate bounded surface field supplies interpolated slopes. This does not provide Apple-level GPU performance. Capture exclusion can hide WinCC from screenshots/recordings unless the explicit frozen screenshot mode is enabled. These limitations remain material to evaluating the result.
 
 ## Clarified rigid reference and performance follow-up
 

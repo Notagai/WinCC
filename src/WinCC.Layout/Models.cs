@@ -96,6 +96,10 @@ public static class LayoutValidator
                         throw new InvalidDataException("Invalid percent anchor.");
                 if (w.Settings.TryGetValue("hourFormat", out var hour) && hour is not ("system" or "12" or "24"))
                     throw new InvalidDataException("Invalid hour format.");
+                if (w.Settings.TryGetValue("displayArea", out var area) && area is not ("screen" or "work"))
+                    throw new InvalidDataException("Invalid display area.");
+                if (w.Settings.TryGetValue("fillDisplay", out var fill) && fill is not ("true" or "false"))
+                    throw new InvalidDataException("Invalid display fill.");
             }
         }
         if (!profiles.Contains(d.ActiveProfileId)) throw new InvalidDataException("Missing active profile.");
@@ -104,10 +108,25 @@ public static class LayoutValidator
 }
 
 public sealed record MonitorArea(string Key, double LeftPx, double TopPx, double WidthDip, double HeightDip,
-    double Scale, bool Primary);
+    double Scale, bool Primary, double? ScreenLeftPx = null, double? ScreenTopPx = null, double? ScreenWidthDip = null, double? ScreenHeightDip = null);
 
 public static class Geometry
 {
+    public static MonitorArea Area(MonitorArea monitor, bool wholeScreen) => wholeScreen ? monitor with
+    {
+        LeftPx = monitor.ScreenLeftPx ?? monitor.LeftPx, TopPx = monitor.ScreenTopPx ?? monitor.TopPx,
+        WidthDip = monitor.ScreenWidthDip ?? monitor.WidthDip, HeightDip = monitor.ScreenHeightDip ?? monitor.HeightDip
+    } : monitor;
+    public static MonitorArea ForWidget(Widget widget, IReadOnlyList<MonitorArea> monitors) =>
+        Area(Resolve(widget.MonitorKey, monitors), widget.Settings.GetValueOrDefault("displayArea") == "screen");
+    public static RectDip Project(Widget widget, MonitorArea area)
+    {
+        var r = widget.Settings.GetValueOrDefault("fillDisplay") == "true" ? new RectDip(0, 0, area.WidthDip, area.HeightDip) : widget.RectDip;
+        var spec = WidgetCatalog.Get(widget.Type);
+        if (widget.Settings.TryGetValue("anchorX", out var x) && widget.Settings.TryGetValue("anchorY", out var y))
+            return AtPercent(r, spec, area, double.Parse(x, System.Globalization.CultureInfo.InvariantCulture), double.Parse(y, System.Globalization.CultureInfo.InvariantCulture));
+        return Clamp(r, spec, area);
+    }
     public static RectDip AtPercent(RectDip r, WidgetSpec spec, MonitorArea monitor, double x, double y)
     {
         if (!double.IsFinite(x) || !double.IsFinite(y) || x is < 0 or > 100 || y is < 0 or > 100) throw new ArgumentOutOfRangeException(nameof(x));

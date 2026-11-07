@@ -39,7 +39,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         this.dashboard = dashboard; this.widget = widget;
         FontSize = dashboard.Settings.WidgetFontSize;
         Title = "WinCC · " + WidgetCatalog.Get(widget.Type).Name;
-        var initialRect = Geometry.Clamp(widget.RectDip, WidgetCatalog.Get(widget.Type), Geometry.Resolve(widget.MonitorKey, dashboard.Monitors));
+        var initialRect = Geometry.Project(widget, Geometry.ForWidget(widget, dashboard.Monitors));
         Width = initialRect.Width; Height = initialRect.Height;
         ShowActivated = false; ShowInTaskbar = false;
         WindowStyle = WindowStyle.None;
@@ -52,7 +52,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             Child = new Border { Padding = new Thickness(18), Child = grid }
         };
-        card = new LiquidGlass { Material = widget.Type, Child = viewport, ClearVariant = dashboard.Settings.GlassVariant != "Regular", ReduceMotion = dashboard.Settings.ReduceGlassMotion, ReduceTransparency = dashboard.Settings.ReduceGlassTransparency, FrameRate = dashboard.Settings.GlassFps, TimeShaped = dashboard.Settings.TimeShapedGlass, Design = dashboard.Settings.Design };
+        card = new LiquidGlass { Material = widget.Type, Child = viewport, ClearVariant = dashboard.Settings.GlassVariant != "Regular", ReduceMotion = dashboard.Settings.ReduceGlassMotion, ReduceTransparency = dashboard.Settings.ReduceGlassTransparency, FrameRate = dashboard.Settings.GlassFps, RenderScale = dashboard.Settings.GlassRenderScale, TimeShaped = dashboard.Settings.TimeShapedGlass, Design = dashboard.Settings.Design };
         bool darkText = false;
         card.BackgroundLuminance += luminance =>
         {
@@ -111,7 +111,7 @@ internal sealed class WidgetWindow : Window, IDisposable
             Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(ApplyPlacement));
         return 0;
     }
-    private MonitorArea Monitor => Geometry.Resolve(widget.MonitorKey, dashboard.Monitors);
+    private MonitorArea Monitor => Geometry.ForWidget(widget, dashboard.Monitors);
     public void ApplyPlacement()
     {
         if (Handle == 0 || disposed || placing) return;
@@ -119,14 +119,11 @@ internal sealed class WidgetWindow : Window, IDisposable
         try
         {
             var m = Monitor;
-            var r = Geometry.Clamp(widget.RectDip, WidgetCatalog.Get(widget.Type), m);
-            if (widget.Settings.TryGetValue("anchorX", out var ax) && widget.Settings.TryGetValue("anchorY", out var ay) &&
-                double.TryParse(ax, NumberStyles.Float, CultureInfo.InvariantCulture, out double anchorX) && double.TryParse(ay, NumberStyles.Float, CultureInfo.InvariantCulture, out double anchorY))
-                r = Geometry.AtPercent(r, WidgetCatalog.Get(widget.Type), m, anchorX, anchorY);
+            var r = Geometry.Project(widget, m);
             var size = ((int)Math.Round(r.Width * m.Scale), (int)Math.Round(r.Height * m.Scale));
             if (shapedSize != size)
             {
-                BackdropCapture.ShapeClock(Handle, size.Item1, size.Item2); shapedSize = size;
+                BackdropCapture.ShapeClock(Handle, size.Item1, size.Item2, dashboard.Settings.TimeShapedGlass); shapedSize = size;
             }
             var p = Geometry.ToPhysical(r, m);
             Desktop.Place(Handle, (int)Math.Round(p.X), (int)Math.Round(p.Y),
@@ -180,13 +177,10 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             if (!dashboard.Editor.IsEditing) { thumb.CancelDrag(); return; }
             activeThumb = thumb; gestureSaved = widget;
+            widget = widget with { RectDip = Geometry.Project(widget, Monitor) };
             var startSettings = new Dictionary<string, string>(widget.Settings);
-            if (startSettings.TryGetValue("anchorX", out var ax) && startSettings.TryGetValue("anchorY", out var ay))
-            {
-                var m = Monitor;
-                widget = widget with { RectDip = Geometry.AtPercent(widget.RectDip, WidgetCatalog.Get(widget.Type), m, double.Parse(ax, CultureInfo.InvariantCulture), double.Parse(ay, CultureInfo.InvariantCulture)) };
-            }
             startSettings.Remove("anchorX"); startSettings.Remove("anchorY");
+            if (resize) startSettings.Remove("fillDisplay");
             widget = widget with { Settings = startSettings };
             gestureStart = widget; pointerStart = PointToScreen(Mouse.GetPosition(this));
             thumb.Focus();
@@ -195,7 +189,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             if (gestureStart is null) return;
             Point pointer = PointToScreen(Mouse.GetPosition(this));
-            var m = Geometry.Resolve(gestureStart.MonitorKey, dashboard.Monitors);
+            var m = Geometry.ForWidget(gestureStart, dashboard.Monitors);
             double dx = (pointer.X - pointerStart.X) / m.Scale, dy = (pointer.Y - pointerStart.Y) / m.Scale;
             var r = gestureStart.RectDip;
             r = resize ? r with { Width = r.Width + dx, Height = r.Height + dy } : r with { X = r.X + dx, Y = r.Y + dy };
@@ -222,12 +216,11 @@ internal sealed class WidgetWindow : Window, IDisposable
         // Layout shortcuts only operate on explicit edit handles. Text controls keep their own keys.
         if (!dashboard.Editor.IsEditing || Keyboard.FocusedElement is not Thumb) return;
         double step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 10 : 1;
-        var r = widget.RectDip;
+        var r = Geometry.Project(widget, Monitor);
         var manualSettings = new Dictionary<string, string>(widget.Settings);
-        if (manualSettings.TryGetValue("anchorX", out var keyboardX) && manualSettings.TryGetValue("anchorY", out var keyboardY))
-            r = Geometry.AtPercent(r, WidgetCatalog.Get(widget.Type), Monitor, double.Parse(keyboardX, CultureInfo.InvariantCulture), double.Parse(keyboardY, CultureInfo.InvariantCulture));
         manualSettings.Remove("anchorX"); manualSettings.Remove("anchorY");
         bool resizing = Keyboard.FocusedElement is Thumb { Tag: "resize" };
+        if (resizing) manualSettings.Remove("fillDisplay");
         var next = resizing ? e.Key switch
         {
             Key.Left => r with { Width = r.Width - step }, Key.Right => r with { Width = r.Width + step },

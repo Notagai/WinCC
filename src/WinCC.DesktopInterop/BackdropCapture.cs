@@ -8,9 +8,9 @@ public sealed record BackdropFrame(int Width, int Height, byte[] Pixels);
 /// <summary>Local, in-memory capture. Exclusion prevents the renderer sampling its own previous frame.</summary>
 public static class BackdropCapture
 {
-    public static void ShapeClock(nint window, int width, int height)
+    public static void ShapeClock(nint window, int width, int height, bool timeShaped = false)
     {
-        int diameter = Math.Max(2, (int)(Math.Min(width, height) * .96));
+        int diameter = timeShaped ? 0 : Math.Max(2, (int)(Math.Min(width, height) * .96));
         nint region = CreateRoundRectRgn(0, 0, width + 1, height + 1, diameter, diameter);
         if (region == 0) throw new Win32Exception();
         // SetWindowRgn transfers ownership on success; delete only when that transfer fails.
@@ -28,7 +28,7 @@ public static class BackdropCapture
     public static bool Exclude(nint window, bool excluded = true) => SetWindowDisplayAffinity(window, excluded ? 0x11u : 0u);
     public static BackdropFrame Read(int left, int top, int width, int height, int outputWidth, int outputHeight, byte[]? reusablePixels = null)
     {
-        if (width <= 0 || height <= 0 || outputWidth is < 1 or > 1024 || outputHeight is < 1 or > 1024)
+        if (width <= 0 || height <= 0 || outputWidth is < 1 or > 16384 || outputHeight is < 1 or > 16384 || (long)outputWidth * outputHeight > 64L * 1024 * 1024)
             throw new ArgumentOutOfRangeException(nameof(width));
         nint screen = GetDC(0), dc = 0, bitmap = 0, previous = 0;
         try
