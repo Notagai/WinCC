@@ -2,7 +2,7 @@ namespace WinCC.Layout;
 
 /// <summary>A rounded lens with a clear interior, thick curved perimeter, dispersion and Fresnel reflection.</summary>
 public sealed record GlassAppearance(bool Clear = true, double MaterialScale = 1, double Interaction = 0,
-    double LightX = -.65, double LightY = -.75, bool HighContrast = false, bool ReducedTransparency = false, bool Organic = false, double Phase = 0, bool CompositeToBackdrop = false);
+    double LightX = -.65, double LightY = -.75, bool HighContrast = false, bool ReducedTransparency = false, bool Organic = false, double Phase = 0, bool CompositeToBackdrop = false, int TintRgb = 0xBFD5FF, double TintAmount = 0);
 
 public static class GlassOptics
 {
@@ -54,7 +54,7 @@ public static class GlassOptics
         var material = appearance;
         if (material is not null && (!double.IsFinite(material.MaterialScale) || material.MaterialScale is < .1 or > 10 ||
             !double.IsFinite(material.Interaction) || material.Interaction is < 0 or > 1 ||
-            !double.IsFinite(material.Phase) || !double.IsFinite(material.LightX) || !double.IsFinite(material.LightY))) throw new ArgumentOutOfRangeException(nameof(appearance));
+            !double.IsFinite(material.TintAmount) || material.TintAmount is < 0 or > .35 || material.TintRgb is < 0 or > 0xFFFFFF || !double.IsFinite(material.Phase) || !double.IsFinite(material.LightX) || !double.IsFinite(material.LightY))) throw new ArgumentOutOfRangeException(nameof(appearance));
         double thickness = material is null ? 1 : Math.Clamp(Math.Sqrt(material.MaterialScale), .8, 1.6);
         double radius = Math.Min(width, height) * .48, bevel = Math.Min(width, height) * .16;
         double Distance(double x, double y)
@@ -140,6 +140,12 @@ public static class GlassOptics
                             Sample(sx, sy - spread, channel) + Sample(sx, sy + spread, channel)) * .25;
                         pixel = pixel * .72 + diffuse * .28;
                         pixel = pixel * .88 + 24 * .12;
+                    }
+                    if (!material.HighContrast && material.TintAmount > 0)
+                    {
+                        int tintChannel = (material.TintRgb >> (channel * 8)) & 255;
+                        double colored = pixel * .7 + tintChannel * .3;
+                        pixel += (colored - pixel) * material.TintAmount;
                     }
                     pixel += energy * light * edge * 12;
                 }

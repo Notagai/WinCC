@@ -104,6 +104,19 @@ internal sealed class CommandCenter : Window
                     Button(displays, "Display " + (i + 1), () => dashboard.MoveTo(w.Id, display.Key));
             }
         }
+        Heading("Position · % of usable display");
+        var position = Row();
+        var xPosition = new TextBox { Text = "50", Width = 80, Margin = new Thickness(4) };
+        var yPosition = new TextBox { Text = "50", Width = 80, Margin = new Thickness(4) };
+        System.Windows.Automation.AutomationProperties.SetName(xPosition, "Horizontal percent");
+        System.Windows.Automation.AutomationProperties.SetName(yPosition, "Vertical percent");
+        position.Children.Add(new TextBlock { Text = "X", VerticalAlignment = VerticalAlignment.Center }); position.Children.Add(xPosition);
+        position.Children.Add(new TextBlock { Text = "Y", VerticalAlignment = VerticalAlignment.Center }); position.Children.Add(yPosition);
+        double Read(TextBox field) => double.Parse(field.Text, System.Globalization.CultureInfo.InvariantCulture);
+        Button(position, "Position", () => dashboard.SnapClock(Read(xPosition), Read(yPosition)));
+        Button(position, "X only", () => dashboard.SnapClock(Read(xPosition), null));
+        Button(position, "Y only", () => dashboard.SnapClock(null, Read(yPosition)));
+        Button(position, "Center", () => dashboard.SnapClock(50, 50));
         var shape = Row(); Button(shape, "Glass lens", () => dashboard.ChangeClockShape(false)); Button(shape, "Time-shaped glass", () => dashboard.ChangeClockShape(true));
         Heading("Presets");
         for (int slot = 1; slot <= 3; slot++)
@@ -129,6 +142,7 @@ internal sealed class CommandCenter : Window
         var transparency = Row();
         Button(transparency, "Transparency on", () => dashboard.ChangeGlass(dashboard.Settings.GlassVariant, dashboard.Settings.ReduceGlassMotion, false));
         Button(transparency, "Reduce transparency", () => dashboard.ChangeGlass(dashboard.Settings.GlassVariant, dashboard.Settings.ReduceGlassMotion, true));
+        BuildDesign();
         Heading("Typeface");
         var fonts = Row(); Button(fonts, "Lato", () => dashboard.ChangeFontFamily("Lato"));
         Button(fonts, "VT323", () => dashboard.ChangeFontFamily("VT323"));
@@ -147,9 +161,45 @@ internal sealed class CommandCenter : Window
         content.Children.Add(tabs);
         FontSize = dashboard.Settings.InterfaceFontSize;
     }
+    private void BuildDesign()
+    {
+        Heading("Text design");
+        var d = dashboard.Settings.Design;
+        TextBox Field(string label, string value)
+        {
+            var row = Row(); row.Children.Add(new TextBlock { Text = label, Width = 220, VerticalAlignment = VerticalAlignment.Center });
+            var field = new TextBox { Text = value, Width = 240, Margin = new Thickness(4) };
+            System.Windows.Automation.AutomationProperties.SetName(field, label); row.Children.Add(field); return field;
+        }
+        string N(double value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var font = Field("Glass font", d.Font); var weight = Field("Weight · 100–900", N(d.Weight));
+        var size = Field("Size · 25–200%", N(d.SizePercent));
+        var sx = Field("Horizontal stretch · 0.4–2.5", N(d.StretchX)); var sy = Field("Vertical stretch · 0.4–2.5", N(d.StretchY));
+        var tracking = Field("Letter spacing · −4–20", N(d.Tracking)); var stroke = Field("Stroke thickness · 0–8", N(d.Stroke));
+        var refraction = Field("Lens thickness · 0–2", N(d.Refraction));
+        var tint = Field("Glass tint · #RRGGBB", d.Tint); var amount = Field("Tint strength · 0–35%", N(d.TintAmount * 100));
+        var timeFormat = Field("Custom time format", d.TimeFormat);
+        var dateFormat = Field("Date format", d.DateFormat); var dateFont = Field("Date font", d.DateFont);
+        var dateSize = Field("Date size · 8–40", N(d.DateSize)); var dateLift = Field("Date lift · 0–25", N(d.DateLift));
+        var dateColor = Field("Date color · #RRGGBB", d.DateColor);
+        bool show = d.ShowDate, italic = d.Italic;
+        var toggles = Row();
+        var dateToggle = new Button { Content = show ? "Date shown" : "Date hidden" }; dateToggle.Click += (_, _) => { show = !show; dateToggle.Content = show ? "Date shown" : "Date hidden"; }; toggles.Children.Add(dateToggle);
+        var italicToggle = new Button { Content = italic ? "Italic on" : "Italic off" }; italicToggle.Click += (_, _) => { italic = !italic; italicToggle.Content = italic ? "Italic on" : "Italic off"; }; toggles.Children.Add(italicToggle);
+        double Read(TextBox field) => double.Parse(field.Text, System.Globalization.CultureInfo.InvariantCulture);
+        var actions = Row();
+        Button(actions, "Apply design", () => dashboard.ApplyDesign(new ClockDesign
+        {
+            Font = font.Text.Trim(), Weight = int.Parse(weight.Text, System.Globalization.CultureInfo.InvariantCulture), SizePercent = Read(size), StretchX = Read(sx), StretchY = Read(sy),
+            Tracking = Read(tracking), Stroke = Read(stroke), Refraction = Read(refraction), Tint = tint.Text.Trim(), TintAmount = Read(amount) / 100,
+            ShowDate = show, Italic = italic, TimeFormat = timeFormat.Text, DateFormat = dateFormat.Text,
+            DateFont = dateFont.Text.Trim(), DateSize = Read(dateSize), DateLift = Read(dateLift), DateColor = dateColor.Text.Trim()
+        }));
+        Button(actions, "Reset design", () => dashboard.ApplyDesign(new ClockDesign()));
+    }
     private void Heading(string title)
     {
-        string? section = title == "Clock" ? "Clock" : title.StartsWith("Frame rate") ? "Performance" : title == "Glass" ? "Appearance" : title == "Typeface" ? "Text" : title == "WinCC" ? "App" : null;
+        string? section = title == "Clock" ? "Clock" : title.StartsWith("Frame rate") ? "Performance" : title == "Glass" ? "Appearance" : title == "Text design" ? "Design" : title == "Typeface" ? "Text" : title == "WinCC" ? "App" : null;
         if (section is not null)
         {
             panel = new StackPanel { Margin = new Thickness(12) };

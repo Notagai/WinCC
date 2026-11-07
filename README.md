@@ -26,7 +26,7 @@ This is a custom CPU optical renderer, not Apple's proprietary implementation. I
 
 ## Validation
 
-The Release build passes and **55 contracts pass**, including tests that actual background samples are displaced, the centre stays clear, rounded corners have an alpha mask, and changing the background changes the optical output. Windows live capture, compositing, performance and visual acceptance are **NOT RUN** in this Linux environment. Compilation and optical tests do not certify Apple-like visual quality.
+The Release build passes and **59 contracts pass**, including tests that actual background samples are displaced, the centre stays clear, rounded corners have an alpha mask, and changing the background changes the optical output. Windows live capture, compositing, performance and visual acceptance are **NOT RUN** in this Linux environment. Compilation and optical tests do not certify Apple-like visual quality.
 
 See [Apple research and implementation mapping](docs/APPLE-LIQUID-GLASS-RESEARCH.md), [glass implementation notes](docs/GLASS.md), [development](docs/DEVELOPMENT.md), and [agent instructions](AGENTS.md).
 
@@ -35,3 +35,7 @@ The lens is rigid and rounded, matching the supplied glass reference. Its floati
 Settings now has larger, custom tabs for Clock, Performance, Appearance, Text and App. Right-click the clock → Move / resize clock to reveal drag/resize handles; Save layout commits the result. The Clock tab switches between the full lens and Time-shaped glass. In time-shaped mode, actual font glyph masks drive refraction along the digits and a separate date sits below.
 
 Three layout preset slots save positions, sizes and per-clock format settings. Saving captures the current draft; loading commits that preset as the active layout. Global appearance/FPS settings remain app-wide. Existing preset slots require replacement confirmation. Presets live in `%LOCALAPPDATA%\WinCC\presets`.
+
+The Design tab adds subtle #RRGGBB glass tint (0–35%), removable date, custom time/date formats, separate date font/color/size/lift, and glass-glyph font, weight, italic, size, tracking, stroke and independent X/Y compression/stretch. Bundled Lato/VT323 and installed family names are supported; fonts are not downloaded. Apply design saves the form; Reset restores defaults. Extreme transforms fit inside the clock viewport rather than stretching the window itself.
+
+Clock → Position uses the widget centre in percent of the selected display's usable work area. X=50, Y=50 centres it; edge positions clamp to stay reachable. X only / Y only retain the other axis at its current relative percentage. Anchors persist across resolution changes and are included in layout presets; dragging or keyboard movement releases them. Position commits immediately outside Edit Mode, or stays in the current draft while editing. Appearance preferences remain app-wide.

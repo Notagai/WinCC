@@ -91,6 +91,9 @@ public static class LayoutValidator
                     throw new InvalidDataException("Invalid widget geometry.");
                 if (w.Settings.Any(kv => !Id(kv.Key) || kv.Value is null || kv.Value.Length > 4096))
                     throw new InvalidDataException("Invalid setting.");
+                foreach (string key in new[] { "anchorX", "anchorY" })
+                    if (w.Settings.TryGetValue(key, out var anchor) && (!double.TryParse(anchor, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var percent) || !double.IsFinite(percent) || percent is < 0 or > 100))
+                        throw new InvalidDataException("Invalid percent anchor.");
                 if (w.Settings.TryGetValue("hourFormat", out var hour) && hour is not ("system" or "12" or "24"))
                     throw new InvalidDataException("Invalid hour format.");
             }
@@ -105,6 +108,11 @@ public sealed record MonitorArea(string Key, double LeftPx, double TopPx, double
 
 public static class Geometry
 {
+    public static RectDip AtPercent(RectDip r, WidgetSpec spec, MonitorArea monitor, double x, double y)
+    {
+        if (!double.IsFinite(x) || !double.IsFinite(y) || x is < 0 or > 100 || y is < 0 or > 100) throw new ArgumentOutOfRangeException(nameof(x));
+        return Clamp(r with { X = monitor.WidthDip * x / 100 - r.Width / 2, Y = monitor.HeightDip * y / 100 - r.Height / 2 }, spec, monitor);
+    }
     public static MonitorArea Resolve(string key, IReadOnlyList<MonitorArea> monitors) =>
         monitors.FirstOrDefault(m => m.Key == key) ?? monitors.FirstOrDefault(m => m.Primary)
         ?? monitors.FirstOrDefault() ?? throw new InvalidOperationException("No usable displays.");

@@ -64,3 +64,15 @@ Settings has custom tab templates in a larger window. Close/X/Alt+F4/taskbar clo
 There are exactly three atomic layout preset files. Saving captures current geometry and clock format; global appearance/FPS preferences remain app-wide. Load asks before replacing an unsaved draft, validates the preset before mutation, then commits through the main layout store. Corrupt/future presets are preserved and rejected. Preset tests exercise slots, restart persistence, invalid slot rejection and corrupt data preservation.
 
 Current build: zero warnings/errors; 55 contracts pass. The new cases cover preset persistence and glyph material masks. WPF glyph extraction, native tray/taskbar-close behavior, drag/resize UI and the visual date composition remain NOT RUN on Windows in this Linux task.
+
+## Custom design and percent anchors
+
+`ClockDesign` is an immutable validated record stored with app settings. The Design form commits as one operation, with rollback on settings-write failure. It controls glyph font/weight/italic, size, independent X/Y stretch, tracking, stroke dilation, refraction strength, and subtle tint. A custom installed family name is supported but URI/path font loading is rejected. Regular lens and time-shaped modes share material tint/refraction; glyph-specific transforms apply to the time-shaped material. Date visibility, format, font, color, size and lift are independently configurable. Disabling the date centres the time-shaped composition vertically. Formats are validated before saving.
+
+Glyph outlines are built character by character for tracking, optionally dilated with a stroke, then independently transformed in X and Y. The final transformed bounds are contained in the viewport, so overly large values cannot spill into unrelated desktop areas. Font changes and custom formats invalidate the cached glyph mask; steady frames reuse it.
+
+Tint is luminance-preserving/lightweight mixing, not an opaque fill, and high-contrast mode bypasses it. The material still samples the real background. Text customization and native font selection need Windows visual validation.
+
+Saved X/Y anchors represent centre coordinates in the usable work area, not absolute screen pixels; 50/50 centres the entire clock. Position clamps to reachable bounds, reprojects on display changes and supports negative monitor origins. Manual move/resize/nudge releases the relative anchor; canceled gestures restore it. The layout validator rejects nonfinite and out-of-range anchor metadata. Layout presets include anchors; appearance/design remains app-wide.
+
+59 contracts cover the current implementation, including design serialization/validation, percent-centre projection, anchor persistence and tint channel behavior. Native WPF controls and transformed text are not visually validated on Windows here.

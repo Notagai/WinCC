@@ -29,6 +29,7 @@ internal sealed class WidgetWindow : Window, IDisposable
     private (int Width, int Height) shapedSize;
     private Thumb? activeThumb;
     private Widget? gestureStart;
+    private Widget? gestureSaved;
     private Point pointerStart;
     public nint Handle => new WindowInteropHelper(this).Handle;
     public int ZIndex => widget.ZIndex;
@@ -50,14 +51,14 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             Child = new Border { Padding = new Thickness(18), Child = grid }
         };
-        card = new LiquidGlass { Material = widget.Type, Child = viewport, ClearVariant = dashboard.Settings.GlassVariant != "Regular", ReduceMotion = dashboard.Settings.ReduceGlassMotion, ReduceTransparency = dashboard.Settings.ReduceGlassTransparency, FrameRate = dashboard.Settings.GlassFps, TimeShaped = dashboard.Settings.TimeShapedGlass };
+        card = new LiquidGlass { Material = widget.Type, Child = viewport, ClearVariant = dashboard.Settings.GlassVariant != "Regular", ReduceMotion = dashboard.Settings.ReduceGlassMotion, ReduceTransparency = dashboard.Settings.ReduceGlassTransparency, FrameRate = dashboard.Settings.GlassFps, TimeShaped = dashboard.Settings.TimeShapedGlass, Design = dashboard.Settings.Design };
         bool darkText = false;
         card.BackgroundLuminance += luminance =>
         {
             bool next = !card.ClearVariant && !SystemParameters.HighContrast && (darkText ? luminance > .48 : luminance > .65);
             if (next == darkText) return;
             darkText = next;
-            live.Foreground = dateLine.Foreground = darkText ? new SolidColorBrush(Color.FromRgb(20, 25, 32)) : Brushes.White;
+            live.Foreground = darkText ? new SolidColorBrush(Color.FromRgb(20, 25, 32)) : Brushes.White;
             foreach (var text in new[] { live, dateLine })
                 if (text.Effect is System.Windows.Media.Effects.DropShadowEffect shadow) shadow.Color = darkText ? Colors.White : Colors.Black;
         };
@@ -118,6 +119,9 @@ internal sealed class WidgetWindow : Window, IDisposable
         {
             var m = Monitor;
             var r = Geometry.Clamp(widget.RectDip, WidgetCatalog.Get(widget.Type), m);
+            if (widget.Settings.TryGetValue("anchorX", out var ax) && widget.Settings.TryGetValue("anchorY", out var ay) &&
+                double.TryParse(ax, NumberStyles.Float, CultureInfo.InvariantCulture, out double anchorX) && double.TryParse(ay, NumberStyles.Float, CultureInfo.InvariantCulture, out double anchorY))
+                r = Geometry.AtPercent(r, WidgetCatalog.Get(widget.Type), m, anchorX, anchorY);
             var size = ((int)Math.Round(r.Width * m.Scale), (int)Math.Round(r.Height * m.Scale));
             if (shapedSize != size)
             {
@@ -163,7 +167,16 @@ internal sealed class WidgetWindow : Window, IDisposable
         thumb.DragStarted += (_, _) =>
         {
             if (!dashboard.Editor.IsEditing) { thumb.CancelDrag(); return; }
-            activeThumb = thumb; gestureStart = widget; pointerStart = PointToScreen(Mouse.GetPosition(this));
+            activeThumb = thumb; gestureSaved = widget;
+            var startSettings = new Dictionary<string, string>(widget.Settings);
+            if (startSettings.TryGetValue("anchorX", out var ax) && startSettings.TryGetValue("anchorY", out var ay))
+            {
+                var m = Monitor;
+                widget = widget with { RectDip = Geometry.AtPercent(widget.RectDip, WidgetCatalog.Get(widget.Type), m, double.Parse(ax, CultureInfo.InvariantCulture), double.Parse(ay, CultureInfo.InvariantCulture)) };
+            }
+            startSettings.Remove("anchorX"); startSettings.Remove("anchorY");
+            widget = widget with { Settings = startSettings };
+            gestureStart = widget; pointerStart = PointToScreen(Mouse.GetPosition(this));
             thumb.Focus();
         };
         thumb.DragDelta += (_, _) =>
@@ -180,7 +193,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         thumb.DragCompleted += (_, e) =>
         {
             if (gestureStart is null) return;
-            var original = gestureStart; gestureStart = null; activeThumb = null;
+            var original = gestureSaved ?? gestureStart; gestureStart = null; gestureSaved = null; activeThumb = null;
             if (e.Canceled) { widget = original; ApplyPlacement(); return; }
             dashboard.Action(() =>
             {
@@ -198,6 +211,10 @@ internal sealed class WidgetWindow : Window, IDisposable
         if (!dashboard.Editor.IsEditing || Keyboard.FocusedElement is not Thumb) return;
         double step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 10 : 1;
         var r = widget.RectDip;
+        var manualSettings = new Dictionary<string, string>(widget.Settings);
+        if (manualSettings.TryGetValue("anchorX", out var keyboardX) && manualSettings.TryGetValue("anchorY", out var keyboardY))
+            r = Geometry.AtPercent(r, WidgetCatalog.Get(widget.Type), Monitor, double.Parse(keyboardX, CultureInfo.InvariantCulture), double.Parse(keyboardY, CultureInfo.InvariantCulture));
+        manualSettings.Remove("anchorX"); manualSettings.Remove("anchorY");
         bool resizing = Keyboard.FocusedElement is Thumb { Tag: "resize" };
         var next = resizing ? e.Key switch
         {
@@ -212,7 +229,7 @@ internal sealed class WidgetWindow : Window, IDisposable
         e.Handled = true;
         dashboard.Action(() =>
         {
-            var updated = widget with { RectDip = Geometry.Clamp(next, WidgetCatalog.Get(widget.Type), Monitor) };
+            var updated = widget with { RectDip = Geometry.Clamp(next, WidgetCatalog.Get(widget.Type), Monitor), Settings = manualSettings };
             dashboard.Editor.Update(updated); widget = updated; ApplyPlacement(); dashboard.Center.Refresh();
         });
     }
@@ -221,7 +238,12 @@ internal sealed class WidgetWindow : Window, IDisposable
     {
         var clock = new StackPanel { VerticalAlignment = dashboard.Settings.TimeShapedGlass ? VerticalAlignment.Bottom : VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
         live.Visibility = dashboard.Settings.TimeShapedGlass ? Visibility.Collapsed : Visibility.Visible;
-        dateLine.FontSize = dashboard.Settings.TimeShapedGlass ? 11 : 13;
+        var design = dashboard.Settings.Design;
+        dateLine.Visibility = design.ShowDate ? Visibility.Visible : Visibility.Collapsed;
+        dateLine.FontSize = design.DateSize;
+        dateLine.FontFamily = new FontFamily(design.DateFont is "Lato" or "VT323" ? "/WinCC;component/Assets/Fonts/#" + design.DateFont : design.DateFont);
+        dateLine.Foreground = (Brush)new BrushConverter().ConvertFromString(design.DateColor)!;
+        dateLine.RenderTransform = new TranslateTransform(0, -design.DateLift);
         live.FontSize = 44; live.FontWeight = FontWeights.SemiBold; live.TextAlignment = TextAlignment.Center;
         dateLine.TextAlignment = TextAlignment.Center;
         live.Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 5, ShadowDepth = 1, Opacity = .65 };
@@ -233,9 +255,9 @@ internal sealed class WidgetWindow : Window, IDisposable
     {
         string format = widget.Settings.GetValueOrDefault("hourFormat", "system") switch
         { "12" => "h:mm tt", "24" => "HH:mm", _ => "t" };
-        live.Text = DateTime.Now.ToString(format, CultureInfo.CurrentCulture);
+        live.Text = DateTime.Now.ToString(string.IsNullOrEmpty(dashboard.Settings.Design.TimeFormat) ? format : dashboard.Settings.Design.TimeFormat, CultureInfo.CurrentCulture);
         card.GlyphText = live.Text;
-        dateLine.Text = DateTime.Today.ToString("dddd, MMMM d", CultureInfo.CurrentCulture);
+        dateLine.Text = DateTime.Today.ToString(dashboard.Settings.Design.DateFormat, CultureInfo.CurrentCulture);
     }
     public void Dispose()
     {

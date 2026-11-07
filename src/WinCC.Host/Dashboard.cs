@@ -10,6 +10,7 @@ namespace WinCC.Host;
 
 public sealed class UserSettings
 {
+    public ClockDesign Design { get; set; } = new();
     public double InterfaceFontSize { get; set; } = 18;
     public double WidgetFontSize { get; set; } = 18;
     public string FontFamily { get; set; } = "Lato";
@@ -70,6 +71,8 @@ internal sealed class Dashboard : IDisposable
             Settings = new(); settingsWritable = false;
             Status = "Settings could not be read; original preserved. Settings changes are disabled.";
         }
+        try { if (Settings.Design is null) throw new InvalidDataException(); Settings.Design.Validate(); }
+        catch (InvalidDataException) { Settings.Design = new(); settingsWritable = false; Status = "Clock design is invalid; original settings preserved."; }
         ApplyFont();
         RefreshMonitors();
         Center = new(this);
@@ -83,7 +86,7 @@ internal sealed class Dashboard : IDisposable
     {
         try { action(); }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or
-                                     InvalidOperationException or System.ComponentModel.Win32Exception or JsonException)
+                                     InvalidOperationException or FormatException or OverflowException or ArgumentException or System.ComponentModel.Win32Exception or JsonException)
         {
             Notify(e is InvalidOperationException ? e.Message : "Operation failed. Your saved data is preserved. " + e.Message);
             MessageBox.Show(Center, e.Message, "WinCC");
@@ -102,7 +105,7 @@ internal sealed class Dashboard : IDisposable
         foreach (var w in Editor.Current.Active.Widgets.Where(w => w.Type == "clock"))
         {
             var m = Monitors.FirstOrDefault(m => m.Key == w.MonitorKey || w.MonitorKey == "primary" && m.Primary);
-            if (m is not null && (w.RectDip.X + w.RectDip.Width > m.WidthDip + 0.1 ||
+            if (m is not null && !w.Settings.ContainsKey("anchorX") && (w.RectDip.X + w.RectDip.Width > m.WidthDip + 0.1 ||
                                   w.RectDip.Y + w.RectDip.Height > m.HeightDip + 0.1))
                 throw new InvalidOperationException("A widget exceeds its display work area. Move or resize it before saving.");
         }
@@ -205,6 +208,30 @@ internal sealed class Dashboard : IDisposable
         if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
         bool old = Settings.TimeShapedGlass; Settings.TimeShapedGlass = shaped;
         try { SaveSettings(); } catch { Settings.TimeShapedGlass = old; throw; }
+        Render();
+    }
+    public void ApplyDesign(ClockDesign design)
+    {
+        if (!settingsWritable) throw new InvalidOperationException("Settings are protected.");
+        design.Validate(); var old = Settings.Design; Settings.Design = design;
+        try { SaveSettings(); } catch { Settings.Design = old; throw; }
+        Render();
+    }
+    public void SnapClock(double? horizontal, double? vertical)
+    {
+        if (ReadOnly) throw new InvalidOperationException("Layout saving is disabled.");
+        if (horizontal is double hx && (!double.IsFinite(hx) || hx is < 0 or > 100) || vertical is double vy && (!double.IsFinite(vy) || vy is < 0 or > 100))
+            throw new ArgumentOutOfRangeException(nameof(horizontal), "Position must be 0–100 percent.");
+        bool wasEditing = Editor.IsEditing; Editor.Enter();
+        foreach (var w in Editor.Current.Active.Widgets.Where(w => w.Type == "clock"))
+        {
+            var m = Geometry.Resolve(w.MonitorKey, Monitors);
+            double x = horizontal ?? (w.RectDip.X + w.RectDip.Width / 2) / m.WidthDip * 100;
+            double y = vertical ?? (w.RectDip.Y + w.RectDip.Height / 2) / m.HeightDip * 100;
+            var settings = new Dictionary<string, string>(w.Settings) { ["anchorX"] = x.ToString(System.Globalization.CultureInfo.InvariantCulture), ["anchorY"] = y.ToString(System.Globalization.CultureInfo.InvariantCulture) };
+            Editor.Update(w with { RectDip = Geometry.AtPercent(w.RectDip, WidgetCatalog.Get(w.Type), m, x, y), Settings = settings });
+        }
+        if (!wasEditing) Editor.Done(store);
         Render();
     }
     public void ChangeFrameRate(int fps)

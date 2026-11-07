@@ -459,6 +459,46 @@ try
         Check(blank.All(v => v == 0));
     });
 
+    Test("Clock design validates customization and rejects malformed values", () =>
+    {
+        var design = new ClockDesign { Font = "VT323", Weight = 800, StretchX = 1.5, StretchY = .7, Stroke = 2, Tracking = 3, Tint = "#CFA4FF", TintAmount = .12, ShowDate = false, TimeFormat = "HH:mm:ss" };
+        design.Validate();
+        var restored = JsonSerializer.Deserialize<ClockDesign>(JsonSerializer.Serialize(design))!;
+        Check(restored == design);
+        Throws<InvalidDataException>(() => (design with { Tint = "red" }).Validate());
+        Throws<InvalidDataException>(() => (design with { StretchX = double.NaN }).Validate());
+        Throws<InvalidDataException>(() => (design with { Font = "https://example.com/font" }).Validate());
+        Throws<InvalidDataException>(() => (design with { DateFormat = "%" }).Validate());
+    });
+    Test("50/50 anchors the widget centre and scales with the display", () =>
+    {
+        var m = new MonitorArea("left", -2560, 0, 1600, 1000, 1.5, true);
+        var centered = Geometry.AtPercent(new(0,0,280,150), WidgetCatalog.Get("clock"), m, 50,50);
+        Check(centered.X == 660 && centered.Y == 425);
+        var larger = Geometry.AtPercent(centered, WidgetCatalog.Get("clock"), m with { WidthDip = 2000, HeightDip = 1200 },50,50);
+        Check(larger.X == 860 && larger.Y == 525);
+        var edge = Geometry.AtPercent(centered, WidgetCatalog.Get("clock"), m,0,100);
+        Check(edge.X == 0 && edge.Y == 850);
+        Throws<ArgumentOutOfRangeException>(() => Geometry.AtPercent(centered, WidgetCatalog.Get("clock"), m,101,50));
+    });
+    Test("Saved anchors survive layout restart and invalid anchors are rejected", () =>
+    {
+        var d = WithClock(); d.Active.Widgets[0].Settings["anchorX"] = "50"; d.Active.Widgets[0].Settings["anchorY"] = "25.5";
+        Check(LayoutJson.Parse(LayoutJson.Serialize(d)).Active.Widgets[0].Settings["anchorY"] == "25.5");
+        d.Active.Widgets[0].Settings["anchorX"] = "NaN";
+        Throws<InvalidDataException>(() => LayoutValidator.Validate(d));
+    });
+    Test("Subtle tint preserves coverage and affects the selected color channels", () =>
+    {
+        var source = Enumerable.Repeat((byte)150,200*150*4).ToArray();
+        var untinted = GlassOptics.Render(source,200,150,160,120,1,new GlassAppearance());
+        var tinted = GlassOptics.Render(source,200,150,160,120,1,new GlassAppearance(TintRgb:0xFF0000,TintAmount:.25));
+        int center=(60*160+80)*4;
+        Check(tinted[center+2] > tinted[center] && tinted[center+3] == untinted[center+3]);
+        Check(Math.Abs(tinted[center+2]-untinted[center+2]) < 20);
+        Throws<ArgumentOutOfRangeException>(() => GlassOptics.Render(source,200,150,160,120,1,new GlassAppearance(TintAmount:1)));
+    });
+
 }
 finally { Directory.Delete(root, recursive: true); }
 Console.WriteLine($"{passed} passed, {failed} failed; Windows UI/native checks NOT RUN.");
