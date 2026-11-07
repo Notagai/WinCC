@@ -619,6 +619,33 @@ try
         Check(System.Text.Json.JsonSerializer.Deserialize<ClockDesign>(System.Text.Json.JsonSerializer.Serialize(design))!.FillFrame);
     });
 
+    Test("Large glass retains contour lighting on strokes below the old surface grid", () =>
+    {
+        const int w=3840,h=256,sw=4800,sh=320;
+        var source=Enumerable.Repeat((byte)140,sw*sh*4).ToArray();
+        var mask=new byte[w*h];
+        // Neither column was sampled by the former 768-wide nearest-pixel field.
+        for(int y=32;y<224;y++) { mask[y*w+1000]=255; mask[y*w+1001]=255; }
+        var pixels=GlassOptics.Render(source,sw,sh,w,h,shapeMask:mask);
+        Check(pixels[(128*w+1000)*4]>150);
+        Check(pixels[(128*w+1001)*4]>150);
+    });
+    Test("Moving a large glass stroke one pixel preserves its surface profile", () =>
+    {
+        const int w=1920,h=256,sw=2400,sh=320;
+        var source=Enumerable.Repeat((byte)140,sw*sh*4).ToArray();
+        byte[] Mask(int offset)
+        {
+            var mask=new byte[w*h];
+            for(int y=32;y<224;y++) for(int x=980+offset;x<993+offset;x++) mask[y*w+x]=255;
+            return mask;
+        }
+        var first=GlassOptics.Render(source,sw,sh,w,h,shapeMask:Mask(0));
+        var shifted=GlassOptics.Render(source,sw,sh,w,h,shapeMask:Mask(1));
+        for(int x=980;x<993;x++) for(int c=0;c<4;c++)
+            Check(Math.Abs(first[(128*w+x)*4+c]-shifted[(128*w+x+1)*4+c])<=1);
+    });
+
 }
 finally { Directory.Delete(root, recursive: true); }
 Console.WriteLine($"{passed} passed, {failed} failed; Windows UI/native checks NOT RUN.");

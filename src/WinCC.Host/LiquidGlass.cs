@@ -19,7 +19,9 @@ internal sealed class LiquidGlass : Decorator, IDisposable
     private string glyphText = "00:00";
     private byte[]? glyphMask;
     private (int Width, int Height) glyphSize;
-    public string GlyphText { get => glyphText; set { if (glyphText != value) { glyphText = value; glyphMask = null; generation++; } } }
+    // Content changes take effect on the next frame. Discarding in-flight content on
+    // every second tick could starve presentation when native cache construction is slow.
+    public string GlyphText { get => glyphText; set { if (glyphText != value) { glyphText = value; glyphMask = null; } } }
     private byte[]? GetMask(int width, int height)
     {
         if (!TimeShaped) return null;
@@ -81,6 +83,8 @@ internal sealed class LiquidGlass : Decorator, IDisposable
     private int generation;
     public LiquidGlass()
     {
+        UseLayoutRounding = true;
+        SnapsToDevicePixels = true;
         Loaded += (_, _) => { active = true; if (!disposed) Refresh(); };
         Unloaded += (_, _) => { active = false; timer.Stop(); generation++; frame = null; };
         SizeChanged += (_, _) => { generation++; frame = null; InvalidateVisual(); };

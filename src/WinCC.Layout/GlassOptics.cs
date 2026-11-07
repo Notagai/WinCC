@@ -6,72 +6,27 @@ public sealed record GlassAppearance(bool Clear = true, double MaterialScale = 1
 
 public static class GlassOptics
 {
-    private readonly record struct LensPoint(double Alpha, double Nx, double Ny, double Edge, double Displacement, double Fresnel, double Rim, double LabelDim);
-    private sealed record LensGeometry(int Width, int Height, int OutputWidth, int OutputHeight, byte[]? Mask, LensPoint[] Points);
     private static readonly object CacheGate = new();
-    private static LensGeometry? cached;
-    private static LensPoint Mix(LensPoint a, LensPoint b, double t) => new(
-        a.Alpha + (b.Alpha - a.Alpha) * t, a.Nx + (b.Nx - a.Nx) * t, a.Ny + (b.Ny - a.Ny) * t,
-        a.Edge + (b.Edge - a.Edge) * t, a.Displacement + (b.Displacement - a.Displacement) * t,
-        a.Fresnel + (b.Fresnel - a.Fresnel) * t, a.Rim + (b.Rim - a.Rim) * t, a.LabelDim + (b.LabelDim - a.LabelDim) * t);
-    private static LensGeometry RigidGeometry(int width, int height, byte[]? mask)
+    private static GlyphLens? cached;
+    private sealed record LabelField(int Width, int Height, double[] X, double[] Y);
+    private static LabelField? labelCache;
+    private static LabelField Labels(int width, int height)
     {
         lock (CacheGate)
         {
-            if (cached is { } existing && existing.OutputWidth == width && existing.OutputHeight == height && ReferenceEquals(existing.Mask, mask)) return existing;
-            int outputWidth = width, outputHeight = height; var originalMask = mask;
-            // Bound surface math independently of image resolution. Native image pixels and
-            // glyph coverage stay full resolution; the smooth slope field is interpolated.
-            double ratio = Math.Min(1, 768d / Math.Max(width, height));
-            width = Math.Max(2, (int)Math.Round(width * ratio)); height = Math.Max(2, (int)Math.Round(height * ratio));
-            if (mask is not null && (width != outputWidth || height != outputHeight))
-            {
-                mask = new byte[width * height];
-                for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
-                    mask[y * width + x] = originalMask![Math.Min(outputHeight - 1, (int)((y + .5) * outputHeight / height)) * outputWidth + Math.Min(outputWidth - 1, (int)((x + .5) * outputWidth / width))];
-            }
-            var points = new LensPoint[width * height];
-            var glyphDistance = mask is null ? null : GlyphDistance.Build(mask, width, height);
-            double strokeRadius = glyphDistance is null ? 0 : Math.Max(1, -glyphDistance.Min());
-            var glyphHeight = mask is null ? null : GlyphSurface.Build(mask, width, height, strokeRadius);
-            double Height(int x, int y) => glyphHeight![Math.Clamp(y, 0, height - 1) * width + Math.Clamp(x, 0, width - 1)];
-            double maxGradient = .00001;
-            if (glyphHeight is not null)
-                for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
-                {
-                    double gx = (Height(x + 1, y) - Height(x - 1, y)) * .5;
-                    double gy = (Height(x, y + 1) - Height(x, y - 1)) * .5;
-                    maxGradient = Math.Max(maxGradient, Math.Sqrt(gx * gx + gy * gy));
-                }
-            double radius = Math.Min(width, height) * .48, bevel = Math.Min(width, height) * .16;
-            double Distance(double x, double y)
-            {
-                if (glyphDistance is not null) return glyphDistance[Math.Clamp((int)y, 0, height - 1) * width + Math.Clamp((int)x, 0, width - 1)];
-                double qx = Math.Abs(x - width * .5) - (width * .5 - radius - 1);
-                double qy = Math.Abs(y - height * .5) - (height * .5 - radius - 1);
-                double ax = Math.Max(qx, 0), ay = Math.Max(qy, 0);
-                return Math.Sqrt(ax * ax + ay * ay) + Math.Min(Math.Max(qx, qy), 0) - radius;
-            }
-            for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
-            {
-                double d = Distance(x + .5, y + .5), alpha = mask is null ? Math.Clamp(.5 - d, 0, 1) : mask[y * width + x] / 255d;
-                double nx = (Distance(x + 1, y) - Distance(x - 1, y)) * .5;
-                double ny = (Distance(x, y + 1) - Distance(x, y - 1)) * .5;
-                double edge = Math.Clamp(1 + d / bevel, 0, 1);
-                double displacement = Math.Min(bevel * .22, edge / Math.Sqrt(Math.Max(.08, 1 - edge * edge)) * bevel * .12);
-                if (glyphHeight is not null)
-                {
-                    // Use the continuous height gradient directly. Normalizing each pixel
-                    // would reintroduce a sudden direction flip across stroke centres.
-                    nx = (Height(x - 1, y) - Height(x + 1, y)) * .5 / maxGradient;
-                    ny = (Height(x, y - 1) - Height(x, y + 1)) * .5 / maxGradient;
-                    edge = Math.Min(1, Math.Sqrt(nx * nx + ny * ny));
-                    displacement = Math.Min(bevel * .18, strokeRadius * .45);
-                }
-                double dx = (x - width * .5) / (width * .4), dy = (y - height * .5) / (height * .32);
-                points[y * width + x] = new(alpha, nx, ny, edge, displacement, edge * edge * edge * edge * edge, Math.Exp(-Math.Abs(d + 1.2) * 1.5), 1 - .08 * Math.Exp(-2 * (dx * dx + dy * dy)));
-            }
-            cached = new(width, height, outputWidth, outputHeight, originalMask, points);
+            if (labelCache is { } current && current.Width == width && current.Height == height) return current;
+            var x = new double[width]; var y = new double[height];
+            for (int i = 0; i < width; i++) { double dx = (i - width * .5) / (width * .4); x[i] = Math.Exp(-2 * dx * dx); }
+            for (int i = 0; i < height; i++) { double dy = (i - height * .5) / (height * .32); y[i] = Math.Exp(-2 * dy * dy); }
+            return labelCache = new(width, height, x, y);
+        }
+    }
+    private static GlyphLens RigidGeometry(int width, int height, byte[] mask)
+    {
+        lock (CacheGate)
+        {
+            if (cached is { } existing && existing.Width == width && existing.Height == height && ReferenceEquals(existing.Mask, mask)) return existing;
+            cached = new GlyphLens(mask, width, height);
             return cached;
         }
     }
@@ -117,18 +72,8 @@ public static class GlassOptics
             double c = source[((iy + 1) * sourceWidth + ix) * 4 + channel], d = source[((iy + 1) * sourceWidth + ix + 1) * 4 + channel];
             return (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
         }
-        var geometry = material?.Organic == true ? null : RigidGeometry(width, height, shapeMask);
-        LensPoint Surface(int x, int y)
-        {
-            if (geometry!.Width == width && geometry.Height == height) return geometry.Points[y * width + x];
-            double gx = Math.Clamp((x + .5) * geometry.Width / width - .5, 0, geometry.Width - 1.001);
-            double gy = Math.Clamp((y + .5) * geometry.Height / height - .5, 0, geometry.Height - 1.001);
-            int ix = (int)gx, iy = (int)gy; double tx = gx - ix, ty = gy - iy;
-            int a = iy * geometry.Width + ix, b = a + geometry.Width;
-            return Mix(Mix(geometry.Points[a], geometry.Points[a + 1], tx), Mix(geometry.Points[b], geometry.Points[b + 1], tx), ty);
-        }
-        double fieldScaleX = geometry is null ? 1 : (double)width / geometry.Width;
-        double fieldScaleY = geometry is null ? 1 : (double)height / geometry.Height;
+        var geometry = material?.Organic == true || shapeMask is null ? null : RigidGeometry(width, height, shapeMask);
+        var labels = material is { Clear: true, ReducedTransparency: false, HighContrast: false } ? Labels(width, height) : null;
         double sourceScaleX = sampleRegion.Width / width, sourceScaleY = sampleRegion.Height / height;
         bool alignedSource = Math.Abs(sourceScaleX - 1) < .000001 && Math.Abs(sourceScaleY - 1) < .000001 &&
             Math.Abs(sampleRegion.Left - Math.Round(sampleRegion.Left)) < .000001 && Math.Abs(sampleRegion.Top - Math.Round(sampleRegion.Top)) < .000001;
@@ -156,33 +101,24 @@ public static class GlassOptics
                 }
                 continue;
             }
-            var point = geometry is null ? default : Surface(x, y);
+            var point = geometry is null ? default : geometry.At(x, y);
             double nx = geometry is null ? (Distance(x + 1, y) - Distance(x - 1, y)) * .5 : point.Nx;
             double ny = geometry is null ? (Distance(x, y + 1) - Distance(x, y - 1)) * .5 : point.Ny;
-            double edge = geometry is null ? Math.Clamp(1 + distance / bevel, 0, 1) : point.Edge;
+            double edge = geometry is null ? Math.Clamp(1 + distance / bevel, 0, 1) : Math.Min(1, Math.Sqrt(nx * nx + ny * ny));
             double slope = geometry is null ? edge / Math.Sqrt(Math.Max(.08, 1 - edge * edge)) : 0;
-            double displacement = (geometry is null ? Math.Min(bevel * .22, slope * bevel * .12) : point.Displacement) * strength * thickness;
-            double fresnel = geometry is null ? edge * edge * edge * edge * edge : point.Fresnel;
+            double displacement = (geometry is null ? Math.Min(bevel * .22, slope * bevel * .12) : geometry.Displacement) * strength * thickness;
+            double fresnel = edge * edge * edge * edge * edge;
             double light = Math.Max(0, nx * (material?.LightX ?? -.65) + ny * (material?.LightY ?? -.75));
             double energy = material?.Interaction ?? 0;
             double reflection = fresnel * (.06 + .18 * light + energy * .08);
             double rim = (geometry is null ? Math.Exp(-Math.Abs(distance + 1.2) * 1.5) : point.Rim) * (.16 + .45 * light);
-            double labelDim = 1;
-            if (material is { Clear: true, ReducedTransparency: false, HighContrast: false })
-            {
-                if (geometry is not null) labelDim = point.LabelDim;
-                else
-                {
-                    double dx = (x - width * .5) / (width * .4), dy = (y - height * .5) / (height * .32);
-                    labelDim -= .08 * Math.Exp(-2 * (dx * dx + dy * dy));
-                }
-            }
+            double labelDim = labels is null ? 1 : 1 - .08 * labels.X[x] * labels.Y[y];
             int index = (y * width + x) * 4;
             for (int channel = 0; channel < 3; channel++)
             {
                 double dispersion = channel == 2 ? 1.002 : channel == 0 ? .998 : 1;
-                double sx = baseX - nx * displacement * dispersion * fieldScaleX * sourceScaleX;
-                double sy = baseY - ny * displacement * dispersion * fieldScaleY * sourceScaleY;
+                double sx = baseX - nx * displacement * dispersion * sourceScaleX;
+                double sy = baseY - ny * displacement * dispersion * sourceScaleY;
                 double pixel = Sample(sx, sy, channel);
                 if (material is not null)
                 {

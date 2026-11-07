@@ -27,15 +27,16 @@ public static class GlyphSurface
                     if (x + radius + 1 < width) sum += field[y * width + x + radius + 1];
                 }
             }
-            for (int x = 0; x < width; x++)
+            var sums = new double[width];
+            for (int y = 0; y <= Math.Min(radius, height - 1); y++)
+                for (int x = 0; x < width; x++) sums[x] += temporary[y * width + x];
+            for (int y = 0; y < height; y++)
             {
-                double sum = 0;
-                for (int y = 0; y <= Math.Min(radius, height - 1); y++) sum += temporary[y * width + x];
-                for (int y = 0; y < height; y++)
+                for (int x = 0; x < width; x++)
                 {
-                    field[y * width + x] = (float)(sum / diameter);
-                    if (y - radius >= 0) sum -= temporary[(y - radius) * width + x];
-                    if (y + radius + 1 < height) sum += temporary[(y + radius + 1) * width + x];
+                    field[y * width + x] = (float)(sums[x] / diameter);
+                    if (y - radius >= 0) sums[x] -= temporary[(y - radius) * width + x];
+                    if (y + radius + 1 < height) sums[x] += temporary[(y + radius + 1) * width + x];
                 }
             }
         }

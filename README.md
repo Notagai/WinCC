@@ -26,7 +26,7 @@ This is a custom CPU optical renderer, not Apple's proprietary implementation. I
 
 ## Validation
 
-The Release build passes and **68 contracts pass**, including actual 4K output preserving single-pixel background detail and glyph coverage, physical-DPI resolution, full-monitor sizing/persistence, and the optical/layout contracts. Windows live capture, compositing, performance and visual acceptance are **NOT RUN** in this Linux environment. Compilation and optical tests do not certify Apple-like visual quality.
+The Release build passes and **70 contracts pass**, including actual 4K output preserving single-pixel background detail and glyph coverage, fine-stroke surface lighting, pixel-consistent movement, physical-DPI resolution, full-monitor sizing/persistence, and the optical/layout contracts. Glyph surface slopes and rim lighting now use the selected output resolution as well; there is no 768px surface enlargement. Windows live capture, compositing, performance and visual acceptance are **NOT RUN** in this Linux environment. Compilation and optical tests do not certify Apple-like visual quality.
 
 See [Apple research and implementation mapping](docs/APPLE-LIQUID-GLASS-RESEARCH.md), [glass implementation notes](docs/GLASS.md), [development](docs/DEVELOPMENT.md), and [agent instructions](AGENTS.md).
 
